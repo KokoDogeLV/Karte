@@ -1,0 +1,2569 @@
+<!doctype html>
+<html lang="lv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skolas 3D plāns</title>
+<style>
+  :root{
+    --bg:#eef1f4; --card:rgba(255,255,255,.92); --ink:#1f2933; --muted:#66727f;
+    --line:#d9dee4; --accent:#ff6a3d; --accent-ink:#fff; --shadow:0 6px 24px rgba(20,30,40,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overflow:hidden}
+  #app{position:fixed;inset:0}
+  canvas{display:block;touch-action:none}
+  .card{background:var(--card);backdrop-filter:blur(8px);border-radius:14px;box-shadow:var(--shadow)}
+  .topbar{position:fixed;top:12px;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;pointer-events:none}
+  .topbar>*{pointer-events:auto}
+  .title{padding:10px 14px}
+  .title h1{margin:0;font-size:17px;letter-spacing:.2px}
+  .title small{color:var(--muted);font-size:12px}
+  .floors{display:flex;gap:4px;padding:6px}
+  .floors button,.btn{border:0;background:transparent;color:var(--ink);font:600 14px/1 inherit;
+    padding:10px 13px;border-radius:10px;cursor:pointer;font-family:inherit}
+  .floors button:hover,.btn:hover{background:#e9edf1}
+  .floors button.on{background:var(--accent);color:var(--accent-ink)}
+  .search{position:relative;padding:6px;display:flex;gap:4px;min-width:240px;flex:0 1 300px}
+  .search input{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:14px inherit;font-family:inherit;outline:none;min-width:0}
+  .search input:focus{border-color:var(--accent)}
+  .results{position:absolute;top:calc(100% + 6px);left:0;right:0;padding:6px;display:none;max-height:300px;overflow:auto}
+  .results.show{display:block}
+  .results button{display:flex;justify-content:space-between;width:100%;text-align:left;border:0;background:none;padding:9px 10px;border-radius:8px;cursor:pointer;font:14px inherit;font-family:inherit;color:var(--ink)}
+  .results button:hover{background:#eef1f4}
+  .results span{color:var(--muted);font-size:12px}
+  .results .none{padding:9px 10px;color:var(--muted);font-size:14px}
+  #info,#task{position:fixed;right:12px;top:var(--top,84px);width:300px;padding:16px 16px 14px;transition:opacity .2s,transform .2s;max-height:calc(100vh - var(--top,84px) - 16px);overflow:auto}
+  #info.hidden,#task.hidden{opacity:0;transform:translateY(-8px);pointer-events:none}
+  #info h2,#task h2{margin:0 26px 6px 0;font-size:19px}
+  #info .tag,#task .tag{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:10px}
+  #info .dot,#task .dot{width:12px;height:12px;border-radius:4px;display:inline-block}
+  #info dl,#task dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:14px}
+  #info dt,#task dt{color:var(--muted)}
+  #info dd,#task dd{margin:0}
+  #info p,#task p{font-size:14px;margin:10px 0 0;line-height:1.4}
+  #info .x,#task .x,.side .x{position:absolute;top:10px;right:10px;border:0;background:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
+  .legend{position:fixed;left:12px;bottom:12px;padding:10px 12px;font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+  .legend div{display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
+  .hint{position:fixed;right:12px;bottom:12px;padding:8px 12px;font-size:12px;color:var(--muted)}
+  .taskbar{display:flex;gap:4px;padding:6px;align-items:center}
+  .seg{display:flex;background:#eef1f4;border-radius:10px;padding:3px;gap:2px}
+  .seg button{border:0;background:transparent;font:600 14px/1 inherit;font-family:inherit;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--ink);white-space:nowrap}
+  .seg button.on{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.14)}
+  .mleg{display:flex;gap:10px;padding:0 8px;font:600 13px/1.2 inherit;font-family:inherit;white-space:nowrap}
+  .mleg span{display:inline-flex;align-items:center;gap:5px}
+  .mleg i{width:13px;height:13px;border-radius:7px;display:inline-block;box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(0,0,0,.15)}
+  .tl li.grp{cursor:default;font:700 13px/1.2 inherit;font-family:inherit;color:var(--muted);padding:12px 6px 4px;gap:7px}
+  .tl li.grp:hover{background:none}
+  .tl li.grp i{width:12px;height:12px;border-radius:6px;display:inline-block}
+  #task .vdot{width:12px;height:12px;border-radius:6px;display:inline-block;margin:0 2px 0 4px}
+  .tbtn{border:0;background:transparent;font:600 14px/1 inherit;font-family:inherit;padding:10px 12px;border-radius:10px;cursor:pointer;color:var(--ink);white-space:nowrap}
+  .tbtn:hover{background:#e9edf1}
+  .tbtn b{color:#2e9e5b}
+  .tbtn.edit.on{background:#1f2933;color:#fff}
+  .floors button{position:relative}
+  .floors .cnt{position:absolute;top:1px;right:1px;min-width:17px;height:17px;border-radius:9px;background:var(--accent);color:#fff;font:700 11px/17px system-ui,sans-serif;font-style:normal;padding:0 4px;text-align:center;box-shadow:0 0 0 2px #fff}
+  .floors button.on .cnt{background:#1f2933}
+  .side{position:fixed;left:12px;top:var(--top,84px);width:310px;max-height:calc(100vh - var(--top,84px) - 16px);overflow:auto;padding:16px}
+  .side.hidden{display:none}
+  body.side-open .legend{display:none}
+  .side h3{margin:0 26px 4px 0;font-size:17px}
+  .side .sub{color:var(--muted);font-size:13px;margin:4px 0 10px;line-height:1.4}
+  .pbar{height:8px;background:#e6e9ee;border-radius:4px;overflow:hidden;margin:4px 0 12px}
+  .pbar i{display:block;height:100%;background:#2e9e5b;width:0;transition:width .3s}
+  .tl{list-style:none;margin:0 0 8px;padding:0}
+  .tl li{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:8px;cursor:pointer}
+  .tl li:hover{background:#eef1f4}
+  .tl li.empty{cursor:default;color:var(--muted);font-size:14px}
+  .tl li.empty:hover{background:none}
+  .tl .num{flex:0 0 28px;height:28px;border-radius:14px;background:var(--accent);color:#fff;font:700 13px/28px system-ui,sans-serif;text-align:center}
+  .tl li.done .num{background:#2e9e5b}
+  .tl li.done .t{text-decoration:line-through;color:var(--muted)}
+  .tl .t{flex:1;font-size:14px;min-width:0}
+  .tl .w{display:block;font-size:12px;color:var(--muted);text-decoration:none}
+  .tl .ord{display:flex;flex-direction:column}
+  .tl .ord button{border:0;background:none;cursor:pointer;font-size:11px;padding:1px 6px;color:var(--muted);border-radius:4px}
+  .tl .ord button:hover{background:#dde2e8}
+  .ebtn{display:block;width:100%;border:0;border-radius:10px;padding:11px;margin:8px 0 0;font:600 14px/1.2 inherit;font-family:inherit;cursor:pointer;background:#eef1f4;color:var(--ink);text-align:center}
+  .ebtn:hover{filter:brightness(.96)}
+  .ebtn.primary{background:var(--accent);color:#fff}
+  .ebtn.dark{background:#1f2933;color:#fff}
+  .ebtn.danger{background:#fde8e4;color:#b3261e}
+  .btnrow{display:flex;gap:8px}
+  .btnrow .ebtn{flex:1}
+  #task label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  #task label.c{display:inline-flex;align-items:center;gap:4px;margin:0 14px 0 0;color:var(--ink);font-size:14px}
+  #task input[type=text],#task textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;font:14px inherit;font-family:inherit;outline:none}
+  #task input[type=text]:focus,#task textarea:focus{border-color:var(--accent)}
+  #task textarea{min-height:90px;resize:vertical}
+  #task p.desc{white-space:pre-wrap}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2933;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100vw - 32px);text-align:center}
+  .toast.show{opacity:1}
+  .floors .lbl{display:none}
+  .floors button{white-space:nowrap}
+  @media (max-width:700px){
+    .title{display:none}
+    .topbar{top:8px;left:8px;right:8px;gap:8px}
+    .floors{flex:1 1 100%;flex-wrap:wrap;gap:4px;padding:6px;align-items:center}
+    .floors .lbl{display:block;font:600 13px/1 inherit;font-family:inherit;color:var(--muted);padding:0 4px 0 6px}
+    .floors .long{display:none}
+    .floors button{flex:1 1 0;min-width:40px;padding:11px 0;font-size:15px}
+    .floors button.wide{flex:2 1 0;min-width:76px}
+    .floors button.wide .cnt{position:static;display:inline-block;margin-left:6px;vertical-align:1px;box-shadow:none}
+    .search{flex:1 1 100%}
+    #info,#task{left:8px;right:8px;width:auto;top:auto;bottom:8px;max-height:60vh}
+    .taskbar{flex:1 1 100%}
+    .seg{flex:1}
+    .mleg{flex:1;justify-content:center}
+    .seg button{flex:1}
+    .side{left:8px;right:8px;width:auto;top:auto;bottom:8px;max-height:60vh}
+    .toast{bottom:auto;top:calc(var(--top,84px) + 4px)}
+    .legend{display:none}
+    .hint{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="topbar">
+  <div class="card title"><h1>Skolas 3D plāns</h1><small>J. Rozentāla iela 19, Saldus · V1.66</small></div>
+  <div class="card floors" id="floors"></div>
+  <div class="card taskbar">
+    <div class="mleg" id="mleg"><span><i style="background:#7c3aed"></i>⏱ Uz laiku</span><span><i style="background:#ff6a3d"></i>★ Uz punktiem</span></div>
+    <button class="tbtn prog" id="prog"></button>
+    <button class="tbtn edit" id="edit" title="Likt un labot uzdevumu marķierus">✎ Rediģēt</button>
+  </div>
+  <div class="card search">
+    <input id="q" type="search" placeholder="Meklēt: 2-03, stadions…" autocomplete="off">
+    <div class="card results" id="results"></div>
+  </div>
+</div>
+
+<aside id="info" class="card hidden">
+  <button class="x" id="close" aria-label="Aizvērt">×</button>
+  <h2 id="i-name"></h2>
+  <div class="tag"><span class="dot" id="i-dot"></span><span id="i-type"></span></div>
+  <dl id="i-rows"></dl>
+  <p id="i-desc"></p>
+</aside>
+
+<aside id="task" class="card hidden">
+  <button class="x" id="task-close" aria-label="Aizvērt">×</button>
+  <div id="task-body"></div>
+</aside>
+
+<aside id="tasks" class="card side hidden">
+  <button class="x" id="t-close" aria-label="Aizvērt">×</button>
+  <h3>Uzdevumi</h3>
+  <div class="sub"><span id="t-sum"></span></div>
+  <div class="pbar"><i id="t-bar"></i></div>
+  <ul class="tl" id="t-list"></ul>
+</aside>
+
+<aside id="editor" class="card side hidden">
+  <h3>✎ Uzdevumu marķieri</h3>
+  <div class="sub">Izvēlies stāvu, spied vajadzīgo pogu un noklikšķini kartē. Uz marķiera noklikšķini, lai to labotu.</div>
+  <button class="ebtn" id="e-add-l" style="color:#fff"></button>
+  <button class="ebtn" id="e-add-p" style="color:#fff"></button>
+  <ul class="tl" id="e-list" style="margin-top:10px"></ul>
+  <button class="ebtn dark" id="e-export">⬇ Lejupielādēt HTML ar uzdevumiem</button>
+  <button class="ebtn" id="e-import">Ielādēt uzdevumus no cita faila…</button>
+  <input type="file" id="e-file" accept=".html,.htm,.json" hidden>
+  <button class="ebtn danger" id="e-reset">Atmest melnrakstu</button>
+  <div class="sub" style="margin-top:12px">Izmaiņas automātiski saglabājas šajā pārlūkā. Lai tās redzētu skolēni, lejupielādē HTML un to augšupielādē.</div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<div class="card legend" id="legend"></div>
+<div class="card hint">Velc, lai grieztu · ritenis tuvina · labā poga pārvieto · klikšķis uz marķiera vai telpas</div>
+
+<!--
+  ================================================================
+  SKOLAS DATI — šeit var labot telpu nosaukumus, krāsas un aprakstus.
+  ================================================================
+  Katra telpa:  { tips:"klase", nos:"Kabinets 2-01", r:[x1, z1, x2, z2], apraksts:"..." }
+    r = taisnstūra stūri metros (x – no rietumiem uz austrumiem, z – no ziemeļiem uz dienvidiem).
+    Pārzīmēts no precīzajiem stāvu plāniem (38,5 px = 1 m).
+  Tipi: klase, gaitenis, kapnes, wc, lifts, zale, garderobe, cits
+  "sienas" = papildu sienas gaiteņiem pie ēkas ārsienām: [x1, z1, x2, z2]
+-->
+<script>
+var SKOLA = {
+  cokols: 1.5,             // cik metrus 1. stāva grīda ir virs zemes (ārējās kāpnes ved līdz šim augstumam)
+  telpuNosaukumi: true,    // kuros stāvos rādīt telpu nosaukumus uz grīdas (true — visos, false — nevienā)
+  tipi: {
+    klase:     { nos:"Mācību kabinets",      krasa:"#7eb6ff" },
+    biblioteka:{ nos:"Bibliotēka / inf. centrs", krasa:"#f5a3c7" },
+    gaitenis:  { nos:"Gaitenis / vestibils", krasa:"#e1e4e8", bezSienam:true },
+    kapnes:    { nos:"Kāpnes",               krasa:"#3fae7a" },
+    wc:        { nos:"Tualete",              krasa:"#b49cff" },
+    dusas:     { nos:"Dušas / ģērbtuves",    krasa:"#7fd0e6" },
+    lifts:     { nos:"Lifts / šahta",        krasa:"#9aa0a6" },
+    zale:      { nos:"Zāle",                 krasa:"#ffb15c" },
+    garderobe: { nos:"Garderobe",            krasa:"#f6d365" },
+    virtuve:   { nos:"Ēdamzāle",             krasa:"#e3b48f" },
+    kaste:     { nos:"Tehniskās telpas",     krasa:"#aab0b7" },
+    cits:      { nos:"Personāla kabinets",   krasa:"#f28b82" }
+  },
+
+  stavi: [
+    { nr:1,
+      // margas pie ārējām kāpnēm un lieveņiem: [x1,z1,h1, x2,z2,h2]; h: 0 = grīdas līmenis, -1 = zeme
+      margas: [
+        [62.7,-1.6,0, 62.7,-3.9,-1], [73,-1.6,0, 73,-3.9,-1], [62.7,0.5,0, 62.7,-1.6,0],
+        [73,-1.6,0, 74.6,-1.6,0], [74.6,-1.6,0, 74.6,3,0], [74.6,3,0, 74.6,5.2,-1],
+        [52.9,39.5,0, 49.1,39.5,-1],
+        [53.8,54.4,0, 53.8,55.6,0], [53.8,55.6,0, 54.9,55.6,0], [54.9,55.6,0, 58.1,55.6,-1]
+      ],
+      telpas:[
+      { tips:"gaitenis", nos:"Kāpņu telpa (dienvidu gals)", r:[0.1,1.4,3.9,6.6] },
+      { tips:"wc", nos:"Tualetes", r:[3.9,1.4,10,6.6] },
+      { tips:"gaitenis", nos:"Ieeja (dienvidu gals)", r:[-2.3,6.6,0.1,8.9] },
+      { tips:"gaitenis", nos:"Gaitenis (dienvidu gals)", r:[0.1,6.6,10,8.8] },
+      { tips:"gaitenis", nos:"Gaitenis (garais spārns)", r:[10,5.1,16.5,8.8] },
+      { tips:"kaste", nos:"Ieeja pagrabā", r:[0.8,15.6,3.1,18.3], ara:true, kaste:true },
+      { tips:"klase", nos:"Dizains un tehnoloģijas 117", r:[0.1,8.8,11.6,15.6] },
+      { tips:"klase", nos:"Dizains un tehnoloģijas 117", r:[11.6,8.8,14.6,15.6], dala:true },
+      { tips:"klase", nos:"Dizains un tehnoloģijas 117", r:[14.6,8.8,25.7,15.6], dala:true },
+      { tips:"klase", nos:"Mācību virtuve / Dizains un tehnoloģijas 118", etikete:"Dizains un tehnoloģijas 118", r:[25.7,8.8,31.1,15.6], bezSienam:true, apraksts:"Telpa 118: garā daļa — mācību virtuve, otra daļa — dizains un tehnoloģijas." },
+      { tips:"klase", nos:"Mācību virtuve / Dizains un tehnoloģijas 118", etikete:"Mācību virtuve 118", r:[16.5,5.1,31.1,8.8], bezSienam:true, dala:true },
+      { tips:"virtuve", nos:"Ēdamzāle", r:[44.75,5.1,62.7,15.6], bezSienam:true, apraksts:"Skolas ēdnīca." },
+      { tips:"virtuve", nos:"Virtuve", r:[31.1,5.1,44.75,15.6], bezSienam:true, apraksts:"Skolas virtuve." },
+      { tips:"gaitenis", nos:"Gaitenis", r:[62.7,11.4,64,15.6] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[62.3,15.6,64,17.9] },
+      { tips:"gaitenis", nos:"Galvenā ieeja", r:[62.7,0.5,73,11.4], augstums:6.6, apraksts:"Ieejas halle divu stāvu augstumā." },
+      { tips:"kapnes", nos:"Lievenis (galvenā ieeja)", r:[62.7,-1.6,73,0.5], ara:true, laukums:true },
+      { tips:"kapnes", nos:"Lievenis (galvenā ieeja)", r:[73,-1.6,74.6,3], ara:true, laukums:true, dala:true },
+      { tips:"kapnes", nos:"Ieejas kāpnes", r:[62.7,-3.9,73,-1.6], ara:true, uz:"+z" },
+      { tips:"kapnes", nos:"Sānu kāpnes (galvenā ieeja)", r:[73,3,74.6,5.2], ara:true, uz:"-z" },
+      { tips:"kapnes", nos:"Kāpnes (dienvidu ieeja)", r:[-5.3,6.6,-2.3,8.9], ara:true, uz:"+x" },
+      { tips:"kapnes", nos:"Kāpnes (izeja uz pagalmu)", r:[34.8,15.6,37,18.6], ara:true, uz:"-z" },
+      { tips:"kapnes", nos:"Kāpnes (pagalma puse)", r:[49.1,39.5,52.9,41.5], ara:true, uz:"+x" },
+      { tips:"kapnes", nos:"Lievenis (ziemeļu izeja)", r:[53.8,54.4,54.9,55.6], ara:true, laukums:true },
+      { tips:"kapnes", nos:"Kāpnes (ziemeļu izeja)", r:[54.9,54.4,58.1,55.6], ara:true, uz:"-x" },
+      { tips:"kapnes", nos:"Kāpnes (austrumu ieeja)", r:[69.8,48.4,72.8,50.3], ara:true, uz:"-x" },
+      { tips:"gaitenis", nos:"Halle pie kāpnēm", r:[64,11.4,72.2,17.8] },
+      { tips:"cits", nos:"Arhīvs 115", r:[65.7,11.4,69.4,14.5], bezSienam:true },
+      { tips:"kaste", nos:"Tehniskā telpa 102", r:[55.5,15.6,62.3,17.9] },
+      { tips:"klase", nos:"Darbnīcas 113", r:[55.5,17.9,62.3,27.7] },
+      { tips:"biblioteka", nos:"Informācijas centrs / Bibliotēka 112", etikete:"Informācijas centrs", r:[55.5,27.7,62.3,33.3], apraksts:"Telpa 112: informācijas centrs un bibliotēka." },
+      { tips:"biblioteka", nos:"Informācijas centrs / Bibliotēka 112", etikete:"Bibliotēka", r:[55.5,33.3,62.3,41.9], dala:true },
+      { tips:"kaste", nos:"Tehniskā telpa 111", r:[55.5,41.9,59.7,44.6] },
+      { tips:"kaste", nos:"Tehniskā telpa", etikete:"", r:[59.7,41.9,62.3,44.6] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[55.5,44.6,62.3,47.8] },
+      { tips:"gaitenis", nos:"Gaitenis (ziemeļu spārns)", r:[62.3,17.9,64,47.9] },
+      { tips:"garderobe", nos:"Garderobe 101", r:[64,17.8,72.2,42.6] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[64,42.6,72.2,47.9] },
+      { tips:"wc", nos:"Invalīdu tualete", r:[64.6,42.6,68.2,45.4] },
+      { tips:"gaitenis", nos:"Izeja (austrumu)", r:[61.9,47.9,69.8,50.3] },
+      { tips:"lifts", nos:"Lifts", r:[64.6,48.4,66.7,50.3] },
+      { tips:"cits", nos:"Personāla telpa 114", r:[68.2,42.6,72.2,48.4], bezSienam:true },
+      { tips:"cits", nos:"Personāla telpa 114", r:[64.6,45.4,68.2,48.4], bezSienam:true, dala:true },
+      { tips:"gaitenis", nos:"Pāreja uz sporta zāli", r:[52.9,39.5,55.5,41.5] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[54.4,41.5,55.5,44.9] },
+      { tips:"zale", nos:"Sporta noliktava", r:[22.4,41.5,39.1,47.8] },
+      { tips:"dusas", nos:"Meiteņu ģērbtuve 109", r:[39.1,41.5,44.5,47.8] },
+      { tips:"dusas", nos:"Dušas 1", r:[44.5,41.5,46.5,43.9] },
+      { tips:"dusas", nos:"Dušas 2", r:[46.5,41.5,48.5,43.9] },
+      { tips:"kaste", nos:"Personāla telpa", etikete:"", r:[44.5,43.9,46.5,44.9] },
+      { tips:"kaste", nos:"Personāla telpa", etikete:"", r:[46.5,43.9,48.5,44.9] },
+      { tips:"dusas", nos:"Puišu ģērbtuves", r:[48.5,41.5,54.4,44.9] },
+      { tips:"gaitenis", nos:"Gaitenis pie sporta zāles", r:[44.5,44.9,55.5,47.8] },
+      { tips:"zale", nos:"Sporta zāle", r:[19.1,47.8,49,63], augstums:8, apraksts:"Augsta sporta zāle (~8 m)." },
+      { tips:"cits", nos:"Sporta skolotāji 105", r:[49,47.8,53.8,54.1] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[53.8,47.8,55.6,54.4] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[55.6,47.8,58.7,49.6] },
+      { tips:"cits", nos:"104", r:[55.6,49.6,58.7,54.3] },
+      { tips:"cits", nos:"Medicīnas kabinets 103", r:[58.7,47.8,62,54.3] }
+    ], sienas:[
+      [-2.3,6.6,0.1,6.6],[-2.3,8.9,0.1,8.9],[0.1,1.4,0.1,6.6],[0.1,1.4,3.9,1.4],[2,3.5,2,6.6],[2,6.6,3.9,6.6],[2,3.5,3.9,3.5],[25.7,15.6,31.1,15.6],[10,5.1,31.1,5.1],[44.7,5.1,62.7,5.1],[39.4,15.6,55.5,15.6],[31.1,15.6,34.8,15.6],[55.5,15.6,55.5,17.9],[62.7,0.5,62.7,15.6],[73,0.5,73,11.4],[62.7,1.9,71.4,1.9],[72.7,1.9,73,1.9],[69.2,1.9,69.2,4.2],[69.2,4.2,71.4,4.2],[72.7,4.2,73,4.2],[72.2,11.4,73,11.4],[65.7,14.5,69.4,14.5],[69.4,11.4,69.4,14.5],[31.1,5.1,44.7,5.1],[16.5,5.1,16.5,8.8],[25.7,8.8,31.1,8.8],[31.1,5.1,31.1,15.6],[31.1,8.8,34.6,8.8],[34.2,5.1,34.2,7.9],[34.1,7.7,35.3,7.7],[36.1,7.7,37.1,7.7],[37,5.1,37,7.9],[34.2,10.2,34.2,13],[31.1,12.3,35.3,12.3],[32.1,12.3,32.1,13.1],[33.1,12.3,33.1,13.8],[31.8,13.7,35.3,13.7],[37,8.7,37,14.4],[36.9,8.8,39.45,8.8],[39.35,8.8,39.35,13.7],[41,8.8,44.8,8.8],[44.75,5.1,44.75,15.6],[48.7,8.75,51.4,8.75],[49.7,11.7,52.4,11.7],[56.1,11.6,58.8,11.6],[37,15.6,39.4,15.6],[55.5,15.6,62.7,15.6],[64.6,11.4,72.2,11.4],[65.7,11.4,65.7,12.6],[65.7,13.6,65.7,14.5],[72.2,11.4,72.2,17.8],[72.2,42.6,72.2,48.4],[69.8,48.4,72.2,48.4],[61.9,47.9,61.9,50.3],[61.9,50.3,69.8,50.3],[64.6,48.4,69.8,48.4],[66.7,48.4,66.7,50.3],[64.6,42.6,64.6,48.4],[55.5,47.8,58.8,47.8],[60.9,47.8,62.3,47.8],[62.3,46.2,62.3,47.8],[55.5,46.2,55.5,47.8],[54.4,41.5,54.4,44.9],[52.9,39.5,55.5,39.5],[55.5,41.5,55.5,44.6],[55.5,47.8,55.5,47.8],[62,47.8,62,49.6]
+    ]},
+    { nr:2, telpas:[
+      { tips:"wc", nos:"Tualetes", r:[3.9,2.3,9.7,6.8] },
+      { tips:"gaitenis", nos:"Gaitenis (dienvidu gals)", r:[0.1,6.8,9.7,8.9] },
+      { tips:"gaitenis", nos:"Gaitenis (garais spārns)", r:[9.7,5.1,50.2,8.9] },
+      { tips:"klase", nos:"221", r:[0.1,8.9,8.4,15.6] },
+      { tips:"klase", nos:"Angļu valoda 220", r:[8.4,8.9,16.8,15.6] },
+      { tips:"klase", nos:"Angļu valoda 219", r:[16.8,8.9,25.1,15.6] },
+      { tips:"klase", nos:"Krievu valoda 218", r:[25.1,8.9,33.2,15.6] },
+      { tips:"klase", nos:"Krievu valoda 217", r:[33.2,8.9,41.5,15.6] },
+      { tips:"klase", nos:"Angļu valoda 216", r:[41.5,8.9,50.2,15.6] },
+      { tips:"cits", nos:"Direktores vietnieki 215", r:[52.8,5.1,58.8,11.1] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[50.2,5.1,52.8,11.1] },
+      { tips:"cits", nos:"Sociālais pedagogs 214", r:[58.8,5.1,62.2,11.1], bezSienam:true },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[50.2,11.1,62.4,15.6] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[55.5,15.6,62.4,17.6] },
+      { tips:"cits", nos:"Personāla telpa", r:[55.5,17.6,62.3,21.6] },
+      { tips:"cits", nos:"Direktore", r:[55.5,21.6,62.3,27] },
+      { tips:"klase", nos:"Ķīmija 208", r:[55.5,30,62.3,41.5] },
+      { tips:"klase", nos:"Ķīmija 208", r:[55.5,27,62.3,30], dala:true },
+      { tips:"wc", nos:"Tualetes", r:[55.5,41.5,62.3,44.5] },
+      { tips:"gaitenis", nos:"Kāpņu telpa (ziemeļu gals)", r:[55.5,44.5,62.4,46.2] },
+      { tips:"gaitenis", nos:"Kāpņu telpa (ziemeļu gals)", r:[55.5,46.2,57,47.9], dala:true },
+      { tips:"gaitenis", nos:"Kāpņu telpa (ziemeļu gals)", r:[60.8,46.2,62.4,47.9], dala:true },
+      { tips:"cits", nos:"Skolotāju istaba 201", r:[65.8,17.6,72.2,27] },
+      { tips:"cits", nos:"Lietvede un saimnieks 202", r:[65.8,27,72.2,30.2] },
+      { tips:"klase", nos:"Informācijas tehnoloģijas 203", r:[65.8,30.2,72.2,36.9] },
+      { tips:"klase", nos:"Informācijas tehnoloģijas 205", r:[65.8,36.9,72.2,47.9] },
+      { tips:"gaitenis", nos:"Halle pie kāpnēm", r:[62.4,11.1,66.3,17.6] },
+      { tips:"gaitenis", nos:"Gaitenis (ziemeļu spārns)", r:[62.4,17.6,65.8,47.9] },
+      { tips:"gaitenis", nos:"Gaitenis pie lifta", r:[62.9,47.9,65.7,50] },
+      { tips:"lifts", nos:"Lifts", r:[65.7,47.9,67.9,50] },
+      { tips:"zale", nos:"Sporta zāle (augšdaļa)", r:[19.1,47.8,49,63], atvere:true }   // divu stāvu augsta — tikai kontūra
+    ], sienas:[
+      [9.7,5.1,50.2,5.1],[0.1,6.8,0.1,8.9],[0.1,2.3,0.1,6.8],[0.1,2.3,3.9,2.3],[50.2,15.6,55.5,15.6],[55.5,15.6,55.5,17.6],[62.9,47.9,62.9,50],[62.9,50,67.9,50],[62.4,47.9,62.9,47.9],[50.2,5.1,52.8,5.1],[58.8,5.1,62.2,5.1],[62.2,0.5,62.2,11.1],[72.2,0.5,72.2,11.1],[62.2,0.5,72.2,0.5],[72.2,11.1,72.2,17.6],[55.5,44.5,55.5,47.9],[55.5,47.9,62.4,47.9],[64.3,11.1,72.2,11.1],[60.1,9.6,62.2,9.6],[58.8,11.1,62.2,11.1],[60.7,17.6,62.4,17.6]
+    ]},
+    { nr:3, telpas:[
+      { tips:"wc", nos:"Tualetes", r:[3.9,2.3,9.7,6.8] },
+      { tips:"gaitenis", nos:"Gaitenis (dienvidu gals)", r:[0.1,6.8,9.7,8.9] },
+      { tips:"gaitenis", nos:"Gaitenis (garais spārns)", r:[9.7,5.1,50.4,8.9] },
+      { tips:"klase", nos:"Matemātika 319", r:[0.1,8.9,8.4,15.6] },
+      { tips:"cits", nos:"Personāla telpa 318", r:[8.4,8.9,11,15.6] },
+      { tips:"klase", nos:"Matemātika 317", r:[11,8.9,19.5,15.6] },
+      { tips:"klase", nos:"Bioloģija 316", r:[19.5,8.9,27.7,15.6] },
+      { tips:"cits", nos:"Telpa bez nosaukuma", etikete:"", r:[27.7,8.9,30.8,15.6] },
+      { tips:"klase", nos:"Bioloģija 314", r:[30.8,8.9,41.6,15.6] },
+      { tips:"klase", nos:"Matemātika 313", r:[41.6,8.9,50.4,15.6] },
+      { tips:"klase", nos:"Mācību telpa 311", r:[53,5.1,62.2,11.1] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[50.4,5.1,53,11.1] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[50.4,11.1,62.4,15.6] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[55.5,15.6,62.4,17.6] },
+      { tips:"klase", nos:"Dabaszinību laboratorija 310", r:[55.5,17.6,62.5,27.9] },
+      { tips:"cits", nos:"Personāla telpa", etikete:"", r:[55.5,27.9,62.5,30.6] },
+      { tips:"klase", nos:"Matemātika 308", r:[55.5,30.6,62.5,41.5] },
+      { tips:"wc", nos:"Tualetes", r:[55.5,41.5,62.3,44.5] },
+      { tips:"klase", nos:"Ģeogrāfija 301", r:[65.9,17.6,72.2,30.4] },
+      { tips:"klase", nos:"Mācību telpa 302", r:[65.9,30.4,72.2,36.9] },
+      { tips:"klase", nos:"Sociālās zinības un vēsture 304", r:[65.9,36.9,72.2,47.9] },
+      { tips:"gaitenis", nos:"Halle pie kāpnēm", r:[62.4,11.1,66.3,17.6] },
+      { tips:"gaitenis", nos:"Gaitenis (ziemeļu spārns)", r:[62.5,17.6,65.9,47.9] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[60.4,44.5,62.5,47.9] },
+      { tips:"gaitenis", nos:"Gaitenis pie lifta", r:[62.9,47.9,65.7,50] },
+      { tips:"lifts", nos:"Lifts", r:[65.7,47.9,67.9,50] }
+    ], sienas:[
+      [9.7,5.1,50.4,5.1],[0.1,6.8,0.1,8.9],[0.1,2.3,0.1,6.8],[0.1,2.3,3.9,2.3],[50.4,15.6,55.5,15.6],[55.5,15.6,55.5,17.6],[62.9,47.9,62.9,50],[62.9,50,67.9,50],[62.4,47.9,62.9,47.9],[50.4,5.1,53,5.1],[59,5.1,62.2,5.1],[62.2,5.1,62.2,11.1],[62.2,11.1,72.2,11.1],[72.2,11.1,72.2,17.6],[55.5,44.5,55.5,47.9],[55.5,47.9,62.5,47.9]
+    ]},
+    { nr:4, telpas:[
+      { tips:"wc", nos:"Tualetes", r:[3.9,2.3,9.7,6.8] },
+      { tips:"gaitenis", nos:"Gaitenis (dienvidu gals)", r:[0.1,6.8,9.7,8.9] },
+      { tips:"gaitenis", nos:"Gaitenis (garais spārns)", r:[9.7,5.1,50.3,8.9] },
+      { tips:"klase", nos:"Latviešu valoda 421", r:[0.1,8.9,8.5,15.6] },
+      { tips:"klase", nos:"Latviešu valoda 420", r:[8.5,8.9,16.6,15.6] },
+      { tips:"cits", nos:"Karjeras pedagogs 419", r:[16.6,8.9,19.6,15.6] },
+      { tips:"klase", nos:"Mācību telpa 418", r:[19.6,8.9,25,15.6] },
+      { tips:"klase", nos:"Latviešu valoda 417", r:[25,8.9,33.1,15.6] },
+      { tips:"klase", nos:"Latviešu valoda 416", r:[33.1,8.9,41.6,15.6] },
+      { tips:"klase", nos:"Latviešu valoda 415", r:[41.6,8.9,50.3,15.6] },
+      { tips:"klase", nos:"Latviešu valoda 412", r:[52.9,5.1,62.2,11.1] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[50.3,5.1,52.9,11.1] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[50.3,11.1,62.4,15.6] },
+      { tips:"gaitenis", nos:"Halle pie pagrieziena", r:[55.5,15.6,62.4,17.6] },
+      { tips:"klase", nos:"Mācību telpa 411", r:[55.5,17.6,62.4,27.8] },
+      { tips:"cits", nos:"Direktores vietniece", r:[55.5,27.8,62.4,33.2] },
+      { tips:"klase", nos:"Mūzikas kabinets", r:[55.5,33.2,62.4,41.5] },
+      { tips:"wc", nos:"Tualetes", r:[55.5,41.5,62.3,44.5] },
+      { tips:"gaitenis", nos:"Halle pie kāpnēm", r:[62.4,11.1,66.3,17.6] },
+      { tips:"gaitenis", nos:"Gaitenis (ziemeļu spārns)", r:[62.4,39.7,65.4,47.9] },
+      { tips:"zale", nos:"Aktu zāle 410", r:[62.4,17.6,72.2,39.7], apraksts:"Liela aktu zāle ar skatuvi, divu stāvu augstumā." },
+      { tips:"zale", nos:"Aktu zāle 410", etikete:"Skatuve", r:[65.4,39.7,72.2,47.9], dala:true },
+      { tips:"gaitenis", nos:"Gaitenis", r:[60.4,44.5,62.4,47.9] },
+      { tips:"gaitenis", nos:"Gaitenis pie lifta", r:[62.9,47.9,65.7,50] },
+      { tips:"lifts", nos:"Lifts", r:[65.7,47.9,67.9,50] }
+    ], sienas:[
+      [9.7,5.1,50.3,5.1],[0.1,6.8,0.1,8.9],[0.1,2.3,0.1,6.8],[0.1,2.3,3.9,2.3],[50.3,15.6,55.5,15.6],[55.5,15.6,55.5,17.6],[62.9,47.9,62.9,50],[62.9,50,67.9,50],[62.4,47.9,62.9,47.9],[50.3,5.1,52.9,5.1],[62.2,5.1,62.2,11.1],[62.2,11.1,72.2,11.1],[72.2,11.1,72.2,39.7],[55.5,44.5,55.5,47.9],[55.5,47.9,62.4,47.9]
+    ]},
+    { nr:5, telpas:[
+      // 5. stāvs pielāgots ēkas kontūrai zem tā (4. stāvs); par telpām nav informācijas — slēgtas zonas
+      { tips:"kaste", nos:"Tehniskā telpa", etikete:"", r:[55.5,11.1,72.2,17.6], zems:true },
+      { tips:"kapnes", nos:"Kāpnes (nezināms galamērķis)", r:[55.6,14.6,57.8,17.1], apraksts:"Nav zināms, kur ved šīs kāpnes." },
+      { tips:"kaste", nos:"Mēģinājumu zāle", r:[55.5,17.6,59.9,44.5] },
+      { tips:"kaste", nos:"Tehniskā telpa", etikete:"", r:[59.9,17.6,62.4,44.5] },
+      // atvere:true — tukša telpa (divu stāvu augstās aktu zāles un skatuves augšdaļa): tikai kontūra, bez grīdas un nosaukuma
+      { tips:"zale", nos:"Aktu zāle (augšdaļa)", r:[62.4,17.6,72.2,39.7], atvere:true },
+      { tips:"zale", nos:"Skatuve (augšdaļa)", r:[62.4,39.7,72.2,44.4], atvere:true, bezSienam:true },
+      { tips:"zale", nos:"Skatuve (augšdaļa)", r:[65.4,44.4,72.2,47.9], atvere:true, bezSienam:true },
+      { tips:"gaitenis", nos:"Gaitenis", r:[60.4,44.5,62.4,47.9] },
+      { tips:"kaste", nos:"Tehniskā telpa", etikete:"", r:[62.4,44.4,65.4,45.6] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[62.4,45.6,65.4,47.9] },
+      { tips:"gaitenis", nos:"Gaitenis", r:[62.9,47.9,65.7,50] },
+      { tips:"lifts", nos:"Lifts", r:[65.7,47.9,67.9,50] }
+    ], sienas:[
+      [55.5,44.5,55.5,47.9],[55.5,47.9,62.9,47.9],[62.9,47.9,62.9,50],[62.9,50,65.7,50],[72.2,39.7,72.2,47.9],[65.4,47.9,72.2,47.9],[65.4,45.6,65.4,47.9]
+    ]}
+  ],
+
+  // ēkas apjoma papildinājumi (tikai teritorijas skatam): aktu zāles augstie griesti 5. stāva līmenī
+  // iekšējās kāpnes bez sienām: posmi ar augstumu metros no 1. stāva grīdas (laukums = platforma)
+  // caurspidigs:true — posms 1. stāva skatā ir caurspīdīgs; bezBalstiem:true — platformai nav stabu;
+  // sanuSienas:true — zem posma abās pusēs sienas līdz grīdai (ne augstākas par stāva sienām); galaSiena:true — siena arī augšgalā
+  iekskapnes: [
+    { nos:"Rietumu kāpnes", no:1, lidz:2, posmi:[
+        { r:[64.4,7.4,69.1,9.2], uz:"-x", h0:0, h1:2.2 },
+        { r:[62.7,7.4,64.4,9.2], laukums:true, h:2.2, caurspidigs:true },
+        { r:[62.7,9.2,64.4,11.1], uz:"+z", h0:2.2, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Galvenās kāpnes", no:1, lidz:2, posmi:[
+        { r:[64.8,14.6,69.4,17.7], uz:"+x", h0:0, h1:1.65 },
+        { r:[69.4,11.4,72.1,17.7], laukums:true, h:1.65, caurspidigs:true, bezBalstiem:true },
+        { r:[66.3,11.4,69.4,14.4], uz:"-x", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Galvenās kāpnes", no:2, lidz:3, posmi:[
+        { r:[66.3,14.6,69.4,17.6], uz:"+x", h0:0, h1:1.65 },
+        { r:[69.4,11.4,72.1,17.6], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[66.3,11.4,69.4,14.4], uz:"-x", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Galvenās kāpnes", no:3, lidz:4, posmi:[
+        { r:[66.3,14.6,69.4,17.6], uz:"+x", h0:0, h1:1.65 },
+        { r:[69.4,11.4,72.1,17.6], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[66.3,11.4,69.4,14.4], uz:"-x", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Dienvidu kāpnes", no:1, lidz:2, posmi:[
+        { r:[0.15,3.5,2,6.6], uz:"-z", h0:0, h1:1.65 },
+        { r:[0.15,2.4,3.85,3.5], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[2,3.5,3.85,6.8], uz:"+z", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Dienvidu kāpnes", no:2, lidz:3, posmi:[
+        { r:[0.15,3.5,2,6.8], uz:"-z", h0:0, h1:1.65 },
+        { r:[0.15,2.4,3.85,3.5], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[2,3.5,3.85,6.8], uz:"+z", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Dienvidu kāpnes", no:3, lidz:4, posmi:[
+        { r:[0.15,3.5,2,6.8], uz:"-z", h0:0, h1:1.65 },
+        { r:[0.15,2.4,3.85,3.5], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[2,3.5,3.85,6.8], uz:"+z", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Austrumu kāpnes", no:1, lidz:2, posmi:[
+        { r:[57,46.2,58.9,47.75], uz:"+x", h0:0, h1:1.65, sanuSienas:true },
+        { r:[58.9,46.2,60.8,47.75], uz:"+x", h0:1.65, h1:3.3, sanuSienas:true, galaSiena:true, caurspidigs:true }
+    ] },
+    { nos:"Austrumu kāpnes", no:2, lidz:3, posmi:[
+        { r:[58,44.6,60.4,46.2], uz:"-x", h0:0, h1:1.65 },
+        { r:[55.6,44.6,58,47.75], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[58,46.2,60.4,47.75], uz:"+x", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Austrumu kāpnes", no:3, lidz:4, posmi:[
+        { r:[58,44.6,60.4,46.2], uz:"-x", h0:0, h1:1.65 },
+        { r:[55.6,44.6,58,47.75], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[58,46.2,60.4,47.75], uz:"+x", h0:1.65, h1:3.3, caurspidigs:true }
+    ] },
+    { nos:"Austrumu kāpnes", no:4, lidz:5, posmi:[
+        { r:[58,44.6,60.4,46.2], uz:"-x", h0:0, h1:1.65 },
+        { r:[55.6,44.6,58,47.75], laukums:true, h:1.65, bezBalstiem:true },
+        { r:[58,46.2,60.4,47.75], uz:"+x", h0:1.65, h1:3.3, caurspidigs:true }
+    ] }
+  ],
+  pildijums: [ { stavs:2, r:[66.3,11.1,72.2,17.6] }, { stavs:3, r:[66.3,11.1,72.2,17.6] }, { stavs:4, r:[66.3,11.1,72.2,17.6] }, { stavs:2, r:[0.1,2.3,3.9,6.8] }, { stavs:3, r:[0.1,2.3,3.9,6.8] }, { stavs:4, r:[0.1,2.3,3.9,6.8] }, { stavs:2, r:[55.5,44.5,62.4,47.9] }, { stavs:3, r:[55.5,44.5,60.4,47.9] }, { stavs:4, r:[55.5,44.5,60.4,47.9] }, { stavs:5, r:[55.5,44.5,60.4,47.9] }, { stavs:5, r:[62.4,17.6,72.2,39.7] }, { stavs:5, r:[62.4,39.7,72.2,44.4] }, { stavs:5, r:[65.4,44.4,72.2,47.9] } ],
+
+  /* ================================================================
+     TERITORIJA — pārzīmēta no satelītattēla. Ziemeļi = augšā.
+     Koordinātas metros: x – uz austrumiem, z – uz dienvidiem.
+     Ēkas dienvidrietumu stūris ir (0, 0); garais spārns iet uz ziemeļiem (z negatīvs).
+     r = [x1, z1, x2, z2]
+     ================================================================ */
+  teritorija: {
+    zaliens: [-46,-112,185,58],
+    // ceļi (taisnstūri)
+    celi:  [ [-46,-108,139.7,-103.5],        // ziemeļu (augšējais) ceļš — līdz kartes rietumu malai
+             [-16,-87,68.1,-81],             // ceļš gar skolas ziemeļu pusi
+             [62.1,-103.5,68.1,58],          // galvenais ceļš starp skolu un stadionu — līdz kartes dienvidu malai
+             [1.3,37.6,68.1,42.8],           // ceļš gar saimniecības ēkas dienvidu pusi
+             [39.5,-15.6,62.1,-11.2] ],      // iebrauktuve uz iekšpagalmu
+    // gājēju celiņi (taisnstūri)
+    takas: [ [-1.5,9.7,62.1,13.4],           // celiņš starp skolu un saimniecības ēku
+             [-3,-9.3,1.2,13.4],             // celiņš gar skolas dienvidu galu
+             [-0.5,3.2,9.5,6.3] ],           // pieeja dienvidu ieejai
+    // betona laukumi
+    betons: [ [-17,-61.8,1.5,-9.3],          // liels betona laukums skolas priekšā (gar fasādi paliek zāles josla)
+              [-17,-75.1,-2.4,-61.8],
+              [-19.5,-78.6,-2.4,-75.1],       // starp laukumu un celiņu gar ceļu
+              [-2.4,-75.1,1.5,-61.8],         // betons pie galvenās ieejas
+              [51.3,-69.8,61.3,-60.8] ],     // laukums pie austrumu izejas
+    // celiņi (punkti x,z metros; platums metros)
+    celini: [
+      { nos:"Ceļš", cels:true, platums:6, p:[[-13,-84],[-16.5,-88.5],[-18.5,-95],[-19,-105]] },
+      { nos:"Ceļš uz autostāvvietu", cels:true, platums:6, p:[[65,-84],[80,-86.3],[95,-88.2]] },
+      { nos:"Ceļš (austrumu gals)", cels:true, platums:4.5, p:[[138,-105.75],[146.5,-106.6],[152.5,-108.4],[157,-112]] },
+      { nos:"Celiņš gar ceļu", platums:2.5,
+        p:[[60.85,-58],[60.85,-79.75],[-16.8,-79.75],[-19.5,-83],[-20.8,-87.5],[-22.7,-94],[-23.1,-102.25],[-46,-102.25]] },
+      { nos:"Celiņš uz skolu",          platums:2.5, p:[[66.6, -61.0], [74.3, -59.6], [83.1, -57.6]] },
+      { nos:"Celiņš uz autostāvvietu",  platums:2.5, p:[[103.5, -73.7], [104.6, -80.8], [104.6, -83.3]] },
+      { nos:"Celiņš uz autostāvvietu",  platums:2.5, p:[[132.3, -76.0], [131.9, -82.3]] }
+    ],
+    objekti: [
+      { veids:"stavvieta", nos:"Autostāvvieta",         r:[93.4,-96.1,138.1,-80.2] },
+      { veids:"pagalms",   nos:"Iekšpagalms",           r:[17,-54,40,-4] },
+      { veids:"eka",       nos:"Saimniecības ēka (?)",  r:[1.4,26.7,63.2,37.2],    augstums:4 },
+      { veids:"eka",       nos:"Elektrības mājiņa",     r:[53.5,-6.6,56.5,-1.6],   augstums:2.6 }
+    ],
+    stadions: { nos:"Stadions", centrs:[120.5,-15], pagrieziens:0.36, R:27.7, taisne:66, celins:7.5,
+                laukums:[36,62],
+                sprints:{ platums:4.5, pagarinajums:19, sakums:23, lidz:8 },   // papildu josla no ziemeļiem līdz vidum
+                bedre:{ x:29.95, z:-6, w:3, d:8 },
+                cels:{ x1:-34.5, z1:-27, z2:56.5 },
+                apmale:1.2,                                                      // betona apmales platums                                // gaiši sarkanais segums rietumos
+                nojumes:[[-31,-18],[-31,19.5]],
+                atputa:{ a0:4.05, a1:4.76, nobide:1.2, platums:3.5, soli:4 },      // soliņi ārpus betona apmales                     // soliņi gar ziemeļu līkumu (leņķi radiānos)
+                apraksts:"Saldus vidusskolas stadions: skrejceļš ap futbola laukumu." },
+    basketbols: { nos:"Basketbola laukums", centrs:[99.7,36.65], pagrieziens:0.36, izmers:[17,28] },
+    koki: [
+      [-4,-100.5,58,-100.5], [-4,-91.5,58,-91.5], [70.8,-99.8,90.5,-95.3],
+      [143.8,-93.6,179.8,15.4], [149,-93.6,178.8,-40.1], [-27,-78,-27,-42.2],
+      [-22,-15.4,-22,48.4], [168,38,182,56], [68,-78,70,-67],
+      [14.2,4.7,43,6.2], [123.3,51.4,154.1,52.5]
+    ],
+    kokuAtstarpe: 5,
+    // sīkas detaļas ap skolu
+    detalas: {
+      velo: [
+        { nos:"Velosipēdu novietne (pie ieejas)", r:[-1.5,-60.5,1.2,-55.5] },
+        { nos:"Velosipēdu novietne ar jumtu",     r:[-14,-13.5,-6,-10.5], jumts:true }
+      ]
+    }
+  }
+};
+</script>
+
+<!-- UZDEVUMU DATI — šo bloku aizpilda redaktors (poga “✎ Rediģēt”) -->
+<script id="uzdevumi-dati" type="application/json">
+{
+  "marki": [
+    {
+      "id": "mmv1o54kr4bj",
+      "veids": "laiks",
+      "slanis": "ter",
+      "x": -5.5,
+      "y": 0.1,
+      "z": -67.6,
+      "nos": "Mekle priekšmetus.",
+      "apraksts": "Noteiktā laikā ir jāatrod priekšmeti skolas teritorijā.\nStacijas vadītājs - Alekss"
+    },
+    {
+      "id": "mmv1lzqvk6sm",
+      "veids": "punkti",
+      "slanis": "ter",
+      "x": 4.7,
+      "y": 0,
+      "z": -97.4,
+      "nos": "Šautriņu mešana",
+      "apraksts": "Šautriņas ir jāmet mērķī pie koka, lai iegūtu punktus.\nStacijas vadītājs - Ēriks"
+    },
+    {
+      "id": "mmv1nuz0b3f4",
+      "veids": "punkti",
+      "slanis": "ter",
+      "x": 91.2,
+      "y": 0.1,
+      "z": -4.8,
+      "nos": "Ūdens nešana",
+      "apraksts": "Starp divām nojumēm būs jānes ūdens. Kad uzdevums būs pabeigts, tiks izmērīts pārnestā ūdens apjoms.\nStacijas vadītājs - Nikola"
+    },
+    {
+      "id": "mmv1m4p583tz",
+      "veids": "punkti",
+      "slanis": 0,
+      "x": 57.5,
+      "y": 0.2,
+      "z": 48.8,
+      "nos": "Atpazīsti karogus",
+      "apraksts": "Lai iegūtu punktus, pie medmāsas kabineta jānosauc iedotie valstu karogi.\nStacijas vadītāja - Ramona"
+    },
+    {
+      "id": "mmv1mjzjwvh",
+      "veids": "laiks",
+      "slanis": "ter",
+      "x": -42.6,
+      "y": 0,
+      "z": -96,
+      "nos": "Mēmais šovs",
+      "apraksts": "Jāspēlē mēmais šovs žoga stūri, kurā viens cilvēks bez vārdiem attēlo kādu lietu, darbību vai personu, bet pārējie min.\nStacijas vadītājs - Martins"
+    },
+    {
+      "id": "mmv1o330c5p2",
+      "veids": "punkti",
+      "slanis": 0,
+      "x": 42.9,
+      "y": 0.2,
+      "z": 55.4,
+      "nos": "Basketbola soda metieni.",
+      "apraksts": "Jāmet soda metieni ar basketbola bumbu.\nStacijas vadītājs - Kristers"
+    },
+    {
+      "id": "mmv1ln89j7fz",
+      "veids": "laiks",
+      "slanis": 0,
+      "x": 68.3,
+      "y": 0.2,
+      "z": 2.9,
+      "nos": "Puzles salikšana",
+      "apraksts": "Uz laiku jāsaliek Saldus vidusskolas logo pie kafijas aparāta.\nStacijas vadītājs - Reivens"
+    },
+    {
+      "id": "mmv1nynq56xm",
+      "veids": "punkti",
+      "slanis": 0,
+      "x": 27.7,
+      "y": 0.2,
+      "z": 55.5,
+      "nos": "Futbolbumbas žonglešana",
+      "apraksts": "Visiem komandas biedriem pēc iespējas vairāk reižu jāatsit futbola bumba gaisā, neļaujot tai nokrist. Punkti tiek skaitīti kopā par visu komandu.\nStacijas vadītājs - Raimonds"
+    },
+    {
+      "id": "mmv1nsftm1t3",
+      "veids": "punkti",
+      "slanis": 1,
+      "x": 45.9,
+      "y": 0.2,
+      "z": 12.3,
+      "nos": "Dziesmas jēdzieni",
+      "apraksts": "Klausoties doto dziesmu, ir jāizraksta prasītie jēdzieni, kas tajā minēti. 216 Kabinetā.\nStacijas vadītājs - Līga"
+    },
+    {
+      "id": "mmv1n33bc6vt",
+      "veids": "punkti",
+      "slanis": 1,
+      "x": 35.1,
+      "y": 0.2,
+      "z": 7.4,
+      "nos": "Glāžu Pongs",
+      "apraksts": "Pēc iespējas vairāk bumbiņu jātrāpa glāzēs, lai iegūtu punktus.\nStacijas vadītājs - Rihards"
+    },
+    {
+      "id": "mmv1mtyki2a0",
+      "veids": "laiks",
+      "slanis": 0,
+      "x": 63.2,
+      "y": 0.2,
+      "z": 31.3,
+      "nos": "Balansē slotu",
+      "apraksts": "Jābalansē slota uz viena pirksta pirmā stāva gaitenī uz noteiktu laiku. Lokācija nav noteikta - jāmeklē atbildīgais.\nStacijas vadītājs - Ēriks"
+    },
+    {
+      "id": "mmv1n5fwv48x",
+      "veids": "punkti",
+      "slanis": 1,
+      "x": 64.5,
+      "y": 0.2,
+      "z": 48.5,
+      "nos": "Mini mācibu priekšmetus",
+      "apraksts": "Pēc dotajiem emoji ir jāatmin mācību priekšmets, lai iegūtu punktus.\nStacijas vadītājs - Samanta"
+    },
+    {
+      "id": "mmv1ni6on73n",
+      "veids": "laiks",
+      "slanis": 0,
+      "x": 70.8,
+      "y": 1.4,
+      "z": 13.5,
+      "nos": "Burtu juklis",
+      "apraksts": "Saliec burtu jūkli noteiktā laikā par Saldus vidusskolu. Atrodas pie dīvaniem starp 1. un 2. stāvu. \nStacijas vadītājs - Keitija"
+    },
+    {
+      "id": "mmv1n97ei5mo",
+      "veids": "laiks",
+      "slanis": 2,
+      "x": 64.6,
+      "y": 0.2,
+      "z": 31.7,
+      "nos": "Cepam cimdi",
+      "apraksts": "Uz noteiktu laiku jāatver noteikta grāmatas lappusi ar virtuves cimdiem.\nStacijas vadītājs - Ance"
+    },
+    {
+      "id": "mmv1nf5fo51v",
+      "veids": "laiks",
+      "slanis": 2,
+      "x": 45.7,
+      "y": 0.2,
+      "z": 12.2,
+      "nos": "Uzmini kastē.",
+      "apraksts": "Uzmini, kas atrodas kastes iekšienē, lai iegūtu punktus.\nStacijas vadītājs - Nikola"
+    },
+    {
+      "id": "mmv1n00f67b1",
+      "veids": "punkti",
+      "slanis": 2,
+      "x": 60.4,
+      "y": 0.2,
+      "z": 14.7,
+      "nos": "Memorizē simbolus",
+      "apraksts": "Lai iegūtu punktus, atceries pēc iespējas vairāk simbolu.\nStacijas vadītājs - Elizabete"
+    },
+    {
+      "id": "mmv1nc5hk2o6",
+      "veids": "punkti",
+      "slanis": 2,
+      "x": 51.5,
+      "y": 0.2,
+      "z": 7,
+      "nos": "Kontinenta apraksts",
+      "apraksts": "Lai iegūtu punktus, tev jānosaka dotā kontinenta īpašības tā, lai tās atbilstu.\nStacijas vadītājs - Keita"
+    },
+    {
+      "id": "mmv1m7xs510k",
+      "veids": "punkti",
+      "slanis": 2,
+      "x": 58.9,
+      "y": 0.2,
+      "z": 36.4,
+      "nos": "Zīme un Mini",
+      "apraksts": "Pēc vadītāja instrukcijām uzzīmē prasīto, ko pēc tam jūs minēsiet 308 kabinetā. Jo vairāk atminēsiet, jo vairāk punktu.\nStacijas vadītājs - Estere"
+    },
+    {
+      "id": "mmv1mnrn0457",
+      "veids": "punkti",
+      "slanis": 3,
+      "x": 31.3,
+      "y": 0.2,
+      "z": 6.8,
+      "nos": "Kombinacijas",
+      "apraksts": "Kombinacijas.\nStacijas vadītājs - Raivo"
+    },
+    {
+      "id": "mmv1nl1rc7g2",
+      "veids": "laiks",
+      "slanis": 2,
+      "x": 1,
+      "y": 0.2,
+      "z": 7.9,
+      "nos": "Izdoma vārdus.",
+      "apraksts": "Uz noteiktu laiku tev ir jāizdomā vārdi ar noteiktiem iedotajiem burtiem kāpņu telpā.\nStacijas vadītājs - Viktorija"
+    },
+    {
+      "id": "mmv1o7huhzk",
+      "veids": "punkti",
+      "slanis": "ter",
+      "x": 107.8,
+      "y": 0.1,
+      "z": -89.3,
+      "nos": "Jauniešu dome",
+      "apraksts": "MR-762 forda busiņš"
+    }
+  ]
+}
+</script>
+
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const TIPI = SKOLA.tipi, TER = SKOLA.teritorija;
+const WALL_H = 1.4, WALL_T = 0.18, TILE_H = 0.2, SPACING = 5, LEVEL_H = 3.3;
+const COKOLS = SKOLA.cokols || 0;
+// Ēkas centrs teritorijas koordinātās; skats tiek centrēts uz to
+const BC = { x: 27, z: -36 };
+// Teritorijas centrs skata koordinātās
+const TER_C = new THREE.Vector3(52, 0, 14);
+
+const TER_VEIDI = {
+  stavvieta: { nos: "Autostāvvieta", krasa: "#b9bfc6", h: 0.1 },
+  pagalms:   { nos: "Pagalms",       krasa: "#d8c8a6", h: 0.08 },
+  eka:       { nos: "Ēka",           krasa: "#f2f3f5", h: 4 },
+  sports:    { nos: "Sporta laukums",krasa: "#4f9a4a" },
+  celins:    { nos: "Skrejceļš",     krasa: "#c8553d" },
+  smiltis:   { nos: "Smilšu bedre",  krasa: "#e6d3a3" },
+  basket:    { nos: "Sporta laukums",krasa: "#9fb4c7" }
+};
+
+// ---------- scene ----------
+const app = document.getElementById('app');
+const MOBILE = matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));   // telefonos mazāk pikseļu — ātrāk
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#eef1f4');
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1.5, 2000);
+const HOME_OFFSET = new THREE.Vector3(28, 62, 72);
+camera.position.copy(HOME_OFFSET);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.minDistance = 12;
+controls.maxDistance = 420;
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+
+scene.add(new THREE.HemisphereLight('#ffffff', '#b8c2cc', 1.1));
+const sun = new THREE.DirectionalLight('#ffffff', 1.6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(MOBILE ? 2048 : 4096, MOBILE ? 2048 : 4096);
+sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+
+function setShadow(wide) {
+  const c = wide ? TER_C : new THREE.Vector3();
+  const half = wide ? 125 : 60;
+  sun.target.position.copy(c);
+  sun.position.copy(c).add(new THREE.Vector3(-60, 120, 40));
+  Object.assign(sun.shadow.camera, { left: -half, right: half, top: half, bottom: -half, near: 1, far: 400 });
+  sun.shadow.camera.updateProjectionMatrix();
+}
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(900, 900),
+  new THREE.MeshStandardMaterial({ color: '#e3e7eb', roughness: 1 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.03;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// site = visa vieta; building = ēka (plāna koordinātās, pagriezta, lai ziemeļi būtu augšā)
+const site = new THREE.Group();
+site.position.set(-BC.x, 0, -BC.z);
+scene.add(site);
+const building = new THREE.Group();
+building.rotation.y = Math.PI / 2;
+site.add(building);
+const territory = new THREE.Group();
+site.add(territory);
+const terPins = new THREE.Group();                 // āra (teritorijas) uzdevumu marķieri
+site.add(terPins);
+
+const wallMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 });
+const stepMat = new THREE.MeshStandardMaterial({ color: '#2f8a5f', roughness: 0.8 });
+const lineMat = new THREE.LineBasicMaterial({ color: '#ffffff' });
+
+// ---------- helpers ----------
+const allRooms = [];
+
+function rect(r) {
+  const x1 = Math.min(r[0], r[2]), x2 = Math.max(r[0], r[2]);
+  const z1 = Math.min(r[1], r[3]), z2 = Math.max(r[1], r[3]);
+  return { x1, z1, x2, z2, w: x2 - x1, d: z2 - z1, cx: (x1 + x2) / 2, cz: (z1 + z2) / 2 };
+}
+
+function addWall(group, ax, az, bx, bz, room) {
+  const len = Math.hypot(bx - ax, bz - az);
+  if (len < 0.05) return;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(len + WALL_T, WALL_H, WALL_T), wallMat);
+  m.position.set((ax + bx) / 2, WALL_H / 2, (az + bz) / 2);
+  m.rotation.y = -Math.atan2(bz - az, bx - ax);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  if (room) { m.userData.room = room; room.pick.push(m); }
+  group.add(m);
+}
+
+function addSteps(group, r) {
+  const alongX = r.w >= r.d;
+  const len = alongX ? r.w : r.d;
+  const wid = (alongX ? r.d : r.w) - 0.6;
+  const n = Math.max(5, Math.round(len / 0.55));
+  const step = (len - 0.4) / n;
+  for (let k = 0; k < n; k++) {
+    const h = ((k + 1) / n) * 1.0;
+    const g = alongX ? new THREE.BoxGeometry(step, h, wid) : new THREE.BoxGeometry(wid, h, step);
+    const s = new THREE.Mesh(g, stepMat);
+    const off = -len / 2 + 0.2 + step * (k + 0.5);
+    s.position.set(r.cx + (alongX ? off : 0), TILE_H + h / 2, r.cz + (alongX ? 0 : off));
+    s.castShadow = true;
+    group.add(s);
+  }
+}
+
+function makeLabel(text) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  const font = '600 44px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + 36;
+  c.width = w; c.height = 72;
+  ctx.font = font;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  const rr = 18;
+  ctx.beginPath();
+  ctx.moveTo(rr, 0); ctx.lineTo(w - rr, 0); ctx.quadraticCurveTo(w, 0, w, rr);
+  ctx.lineTo(w, 72 - rr); ctx.quadraticCurveTo(w, 72, w - rr, 72);
+  ctx.lineTo(rr, 72); ctx.quadraticCurveTo(0, 72, 0, 72 - rr);
+  ctx.lineTo(0, rr); ctx.quadraticCurveTo(0, 0, rr, 0); ctx.fill();
+  ctx.fillStyle = '#1f2933';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 18, 38);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  sp.renderOrder = 10;
+  sp.userData.aspect = w / 72;
+  return sp;
+}
+
+function placeLabel(sp, x, y, z, hgt, maxW) {
+  let wid = hgt * sp.userData.aspect;
+  if (maxW && wid > maxW) { const k = maxW / wid; wid *= k; hgt *= k; }
+  sp.scale.set(wid, hgt, 1);
+  sp.position.set(x, y, z);
+}
+
+const fmtArea = (w, d) => '≈ ' + Math.round(w * d).toLocaleString('lv-LV') + ' m²';
+
+// ---------- floors ----------
+// ārējās kāpnes: pakāpieni no zemes (y=0) līdz 1. stāva grīdai (y=COKOLS)
+const outStepMat = new THREE.MeshStandardMaterial({ color: '#cfcac1', roughness: 0.9 });
+function makeOutStairs(t) {
+  const r = rect(t.r), H = Math.max(COKOLS, 0.15), g = new THREE.Group();
+  const uz = t.uz || '+z', alongX = uz.includes('x'), pos = uz[0] === '+';
+  const len = alongX ? r.w : r.d, wid = alongX ? r.d : r.w;
+  const n = Math.max(3, Math.round(H / 0.16));
+  for (let k = 0; k < n; k++) {
+    const l = len * (n - k) / n;                       // pakāpiens k sniedzas līdz durvju galam
+    const geo = alongX ? new THREE.BoxGeometry(l, H / n, wid) : new THREE.BoxGeometry(wid, H / n, l);
+    const m = new THREE.Mesh(geo, outStepMat);
+    const c = pos ? (alongX ? r.x2 : r.z2) - l / 2 : (alongX ? r.x1 : r.z1) + l / 2;
+    m.position.set(alongX ? c : r.cx, H * k / n + H / (2 * n), alongX ? r.cz : c);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+  }
+  return g;
+}
+
+// lievenis (betona laukums 1. stāva līmenī ārpus ēkas)
+function makeLanding(t) {
+  const r = rect(t.r), H = Math.max(COKOLS, 0.15);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(r.w, H, r.d), outStepMat);
+  m.position.set(r.cx, H / 2, r.cz); m.castShadow = true; m.receiveShadow = true;
+  const g = new THREE.Group(); g.add(m); return g;
+}
+// ieeja pagrabā: tumša bedre zemes līmenī ar pakāpieniem uz leju
+const pitMat = new THREE.MeshStandardMaterial({ color: '#5b6066', roughness: 1 });
+const pitStepMat = new THREE.MeshStandardMaterial({ color: '#8d9298', roughness: 1 });
+function makePit(t) {
+  const r = rect(t.r), g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(r.w, 0.04, r.d), pitMat);
+  base.position.set(r.cx, 0.02, r.cz); base.receiveShadow = true; g.add(base);
+  const n = 8;
+  for (let k = 1; k < n; k++) {
+    const z = r.z2 - r.d * k / n;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(r.w - 0.1, 0.045, 0.06), pitStepMat);
+    m.position.set(r.cx, 0.025, z); g.add(m);
+  }
+  const lip = new THREE.MeshStandardMaterial({ color: '#c4c2bc', roughness: 1 });
+  [r.x1, r.x2].forEach(x => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.25, r.d), lip);
+    m.position.set(x, 0.125, r.cz); m.castShadow = true; g.add(m);
+  });
+  return g;
+}
+function makeBox(t) {
+  const r = rect(t.r), H = Math.max(COKOLS, 0.4), g = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.BoxGeometry(r.w, H, r.d), new THREE.MeshStandardMaterial({ color: '#aab0b7', roughness: 0.95 }));
+  m.position.set(r.cx, H / 2, r.cz); m.castShadow = true; m.receiveShadow = true; g.add(m);
+  return g;
+}
+const makeOutside = t => t.kaste ? makeBox(t) : t.pagrabs ? makePit(t) : t.laukums ? makeLanding(t) : makeOutStairs(t);
+// margas: augšējā caurule + stabiņi
+const railMat = new THREE.MeshStandardMaterial({ color: '#5d656d', roughness: 0.4, metalness: 0.6 });
+function makeRailing(seg, base) {
+  const [x1, z1, h1, x2, z2, h2] = seg, H = COKOLS, RH = 1.0, g = new THREE.Group();
+  const a = new THREE.Vector3(x1, base + h1 * H + RH, z1), b = new THREE.Vector3(x2, base + h2 * H + RH, z2);
+  const len = a.distanceTo(b);
+  const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, len, 8), railMat);
+  rail.position.copy(a).add(b).multiplyScalar(0.5);
+  rail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  g.add(rail);
+  const n = Math.max(1, Math.ceil(Math.hypot(x2 - x1, z2 - z1) / 1.2));
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, x = x1 + (x2 - x1) * t, z = z1 + (z2 - z1) * t, y0 = base + (h1 + (h2 - h1) * t) * H;
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, RH, 6), railMat);
+    post.position.set(x, y0 + RH / 2, z); g.add(post);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+function buildRoom(t, floor, fi) {
+  if (t.ara) return buildOutStairs(t, floor, fi);
+  if (t.atvere) {                                     // tukša telpa: tikai kontūras sienas
+    if (!t.bezSienam) {
+      const r = rect(t.r), i = WALL_T / 2 + 0.02;
+      addWall(floor, r.x1 + i, r.z1 + i, r.x2 - i, r.z1 + i, null);
+      addWall(floor, r.x1 + i, r.z2 - i, r.x2 - i, r.z2 - i, null);
+      addWall(floor, r.x1 + i, r.z1 + i, r.x1 + i, r.z2 - i, null);
+      addWall(floor, r.x2 - i, r.z1 + i, r.x2 - i, r.z2 - i, null);
+    }
+    return null;
+  }
+  const tip = TIPI[t.tips] || TIPI.cits;
+  const r = rect(t.r);
+  const corridor = !!tip.bezSienam;
+  const mat = new THREE.MeshStandardMaterial({ color: tip.krasa, roughness: 0.85 });
+  const h = t.kaste ? WALL_H : (corridor || t.zems) ? 0.12 : TILE_H;
+  const tile = new THREE.Mesh(new THREE.BoxGeometry(r.w, h, r.d), mat);
+  tile.position.set(r.cx, h / 2, r.cz);
+  tile.receiveShadow = true;
+
+  if (t.dala) {                                       // tās pašas telpas daļa: pievieno galvenajai telpai
+    const main = allRooms.find(o => o.kind === 'floor' && o.floorIdx === fi && o.nos === t.nos && o.group === floor);
+    if (main) {
+      tile.userData.room = main; main.pick.push(tile); main.mats.push(mat); floor.add(tile);
+      if (!corridor && !t.bezSienam && !t.kaste) {
+        const i = WALL_T / 2 + 0.02;
+        addWall(floor, r.x1 + i, r.z1 + i, r.x2 - i, r.z1 + i, main);
+        addWall(floor, r.x1 + i, r.z2 - i, r.x2 - i, r.z2 - i, main);
+        addWall(floor, r.x1 + i, r.z1 + i, r.x1 + i, r.z2 - i, main);
+        addWall(floor, r.x2 - i, r.z1 + i, r.x2 - i, r.z2 - i, main);
+      }
+      main.platiba = (main.platiba || 0) + r.w * r.d;
+      if (t.etikete) {                                // daļai savs uzraksts tās vidū
+        const tn = SKOLA.telpuNosaukumi;
+        if (tn === true || (Array.isArray(tn) && tn.includes(SKOLA.stavi[fi].nr))) {
+          const sp = makeLabel(t.etikete);
+          placeLabel(sp, r.cx, WALL_H + 0.9, r.cz, 1.1, Math.max(r.w, r.d) * 0.95);
+          floor.add(sp); (main.extraLabels = main.extraLabels || []).push(sp);
+        }
+        main.rows = main.rows.map(row => row[0] === 'Platība' ? ['Platība', fmtArea(main.platiba, 1)] : row);
+        return null;
+      }
+      // nosaukums daļu vidū — uz robežas, kur daļas saskaras
+      const a = main.r0, near = (p, q) => Math.abs(p - q) < 0.05;
+      let mx = null, mz = null;
+      if (near(a.x2, r.x1) || near(a.x1, r.x2)) {
+        const z1 = Math.max(a.z1, r.z1), z2 = Math.min(a.z2, r.z2);
+        if (z2 > z1) { mx = near(a.x2, r.x1) ? a.x2 : a.x1; mz = (z1 + z2) / 2; }
+      } else if (near(a.z2, r.z1) || near(a.z1, r.z2)) {
+        const x1 = Math.max(a.x1, r.x1), x2 = Math.min(a.x2, r.x2);
+        if (x2 > x1) { mz = near(a.z2, r.z1) ? a.z2 : a.z1; mx = (x1 + x2) / 2; }
+      }
+      main.parts = (main.parts || [a]).concat([r]);
+      let maxW = Math.max(a.w, a.d, r.w, r.d) * 0.95;
+      {                                               // kopējā laukuma vidus, ja tas ir telpas iekšpusē
+        const bx1 = Math.min(...main.parts.map(q => q.x1)), bx2 = Math.max(...main.parts.map(q => q.x2));
+        const bz1 = Math.min(...main.parts.map(q => q.z1)), bz2 = Math.max(...main.parts.map(q => q.z2));
+        const cx = (bx1 + bx2) / 2, cz = (bz1 + bz2) / 2;
+        const inside = main.parts.some(q => cx > q.x1 + 0.3 && cx < q.x2 - 0.3 && cz > q.z1 + 0.3 && cz < q.z2 - 0.3);
+        if (inside || main.parts.length > 2) {
+          mx = cx; mz = cz;
+          if (main.parts.length > 2) maxW = Math.max(bx2 - bx1, bz2 - bz1) * 0.6;
+        }
+      }
+      if (mx !== null) {
+        if (main.label) placeLabel(main.label, mx, WALL_H + 0.9, mz, 1.1, maxW);
+        main.mpos.set(mx, main.mpos.y, mz);
+      }
+      main.rows = main.rows.map(row => row[0] === 'Platība' ? ['Platība', fmtArea(main.platiba, 1)] : row);
+      return null;
+    }
+  }
+
+  const room = {
+    kind: 'floor', floorIdx: fi, floorName: SKOLA.stavi[fi].nr + '. stāvs',
+    nos: t.nos, tipsNos: tip.nos, krasa: tip.krasa, apraksts: t.apraksts || '',
+    rows: [['Stāvs', SKOLA.stavi[fi].nr + '. stāvs'], ['Platība', fmtArea(r.w, r.d)]], platiba: r.w * r.d, r0: r,
+    group: floor, mats: [mat], pick: [tile], label: null, searchable: !corridor && !t.dala,
+    mpos: new THREE.Vector3(r.cx, (corridor ? 0.12 : WALL_H) + 0.3, r.cz)
+  };
+  tile.userData.room = room;
+  floor.add(tile);
+
+  if (!corridor && !t.bezSienam && !t.kaste) {
+    const i = WALL_T / 2 + 0.02;
+    addWall(floor, r.x1 + i, r.z1 + i, r.x2 - i, r.z1 + i, room);
+    addWall(floor, r.x1 + i, r.z2 - i, r.x2 - i, r.z2 - i, room);
+    addWall(floor, r.x1 + i, r.z1 + i, r.x1 + i, r.z2 - i, room);
+    addWall(floor, r.x2 - i, r.z1 + i, r.x2 - i, r.z2 - i, room);
+  }
+  if (t.tips === 'kapnes') addSteps(floor, r);
+
+  const tn = SKOLA.telpuNosaukumi;
+  const showName = tn === true || (Array.isArray(tn) && tn.includes(SKOLA.stavi[fi].nr));
+  let lbl = t.etikete !== undefined ? t.etikete : t.nos;
+  if (lbl && t.tips === 'wc') lbl = '🚻 ' + lbl;
+  const minS = t.tips === 'wc' ? 1.5 : 2.4;
+  if (showName && lbl && !corridor && !t.dala && r.w >= minS && r.d >= minS) {
+    const sp = makeLabel(lbl);
+    placeLabel(sp, r.cx, WALL_H + 0.9, r.cz, 1.1, Math.max(r.w, r.d) * 0.95);
+    floor.add(sp);
+    room.label = sp;
+  }
+  allRooms.push(room);
+  return room;
+}
+
+function buildOutStairs(t, floor, fi) {
+  const r = rect(t.r), tip = TIPI.kapnes;
+  const g = makeOutside(t);
+  g.position.y = -COKOLS;                                // stāva skatā kāpnes iet uz leju līdz zemei
+  floor.add(g);
+  const room = {
+    kind: 'floor', floorIdx: fi, floorName: SKOLA.stavi[fi].nr + '. stāvs',
+    nos: t.nos, tipsNos: t.kaste ? 'Tehniskā telpa' : t.pagrabs ? 'Ieeja pagrabā' : t.laukums ? 'Lievenis' : 'Ārējās kāpnes', krasa: '#cfcac1', apraksts: t.apraksts || '',
+    rows: [['Stāvs', SKOLA.stavi[fi].nr + '. stāvs'], ['Augstums', '≈ ' + COKOLS + ' m']],
+    group: floor, mats: [outStepMat], pick: [...g.children], label: null, searchable: !t.dala,
+    mpos: new THREE.Vector3(r.cx, 0.4, r.cz)
+  };
+  g.children.forEach(m => { m.userData.room = room; });
+  allRooms.push(room);
+  return room;
+}
+
+const floors = SKOLA.stavi.map((st, fi) => {
+  const g = new THREE.Group();
+  g.userData = { nr: st.nr, rooms: [], targetY: 0 };
+  st.telpas.forEach(t => { const r = buildRoom(t, g, fi); if (r) g.userData.rooms.push(r); });
+  (st.margas || []).forEach(m => g.add(makeRailing(m, 0)));
+  (st.sienas || []).forEach(s => addWall(g, s[0], s[1], s[2], s[3], null));
+  building.add(g);
+  return g;
+});
+
+// ---------- iekšējās kāpnes (redzamas abos stāvos, ko tās savieno) ----------
+const onlySingle = [];
+{
+  function stairMats() {
+    const solid = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
+    const glass = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, transparent: true, opacity: 0.45, depthWrite: false });
+    return { s: solid(TIPI.kapnes.krasa), e: solid('#2f8a5f'), st: glass(TIPI.kapnes.krasa), et: glass('#2f8a5f') };
+  }
+  const postMat = new THREE.MeshStandardMaterial({ color: '#8a929b', roughness: 0.5, metalness: 0.3 });
+  const occMat = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
+  const T = 0.07;                                   // pakāpiena / platformas biezums (apakšā tukšs)
+  function slab(g, x1, z1, x2, z2, y, th, mat) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(x2 - x1), th, Math.abs(z2 - z1)), mat);
+    m.position.set((x1 + x2) / 2, y - th / 2, (z1 + z2) / 2); m.castShadow = true; m.receiveShadow = true;
+    g.add(m); return m;
+  }
+  function beam(g, a, b, w, h, mat) {               // slīpa sija starp punktiem a un b
+    const len = a.distanceTo(b);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, len), mat);
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.lookAt(b.x, b.y, b.z);
+    m.castShadow = true; g.add(m); return m;
+  }
+  function post(g, x, z, h) {
+    if (h <= 0.05) return;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, h, 0.12), postMat);
+    m.position.set(x, h / 2, z); m.castShadow = true; g.add(m);
+  }
+  // lower=true: kāpnes iet uz augšu no šī stāva (caurspīdīgums pēc karodziņiem);
+  // lower=false: kāpnes iet uz leju — posms līdz starpplatformai un platforma ir pilni, tālākais posms caurspīdīgs
+  function buildStair(def, M, lower) {
+    const g = new THREE.Group();
+    def.posmi.forEach(p => {
+      const r = rect(p.r);
+      const see = lower ? !!p.caurspidigs : (!p.laukums && p.h1 < LEVEL_H - 0.01);
+      const stairMat = see ? M.st : M.s, edgeMat = see ? M.et : M.e;
+      if (p.laukums) {
+        const m = slab(g, r.x1, r.z1, r.x2, r.z2, p.h, 0.15, stairMat);
+        if (see) m.castShadow = false;
+        if (!p.bezBalstiem)
+          [[r.x1 + 0.15, r.z1 + 0.15], [r.x2 - 0.15, r.z1 + 0.15], [r.x1 + 0.15, r.z2 - 0.15], [r.x2 - 0.15, r.z2 - 0.15]]
+            .forEach(([x, z]) => post(g, x, z, p.h - 0.15));
+        return;
+      }
+      const alongX = p.uz.includes('x'), pos = p.uz[0] === '+';
+      const len = alongX ? r.w : r.d, n = Math.max(3, Math.round((p.h1 - p.h0) / 0.16)), sl = len / n, rise = (p.h1 - p.h0) / n;
+      for (let k = 0; k < n; k++) {
+        const top = p.h0 + rise * (k + 1);
+        const a = pos ? (alongX ? r.x1 : r.z1) + sl * k : (alongX ? r.x2 : r.z2) - sl * (k + 1);
+        const mat = k % 2 ? stairMat : edgeMat;
+        // pakāpiens (plāns) + vertikāla priekšdaļa
+        const t1 = alongX ? slab(g, a, r.z1, a + sl, r.z2, top, T, mat) : slab(g, r.x1, a, r.x2, a + sl, top, T, mat);
+        const front = pos ? a : a + sl;
+        const t2 = alongX ? slab(g, front - 0.02, r.z1, front + 0.02, r.z2, top, rise, mat)
+                          : slab(g, r.x1, front - 0.02, r.x2, front + 0.02, top, rise, mat);
+        if (see) t1.castShadow = t2.castShadow = false;
+      }
+      // divas slīpas sānu sijas, lai pakāpieni nekarātos gaisā
+      const lo = pos ? (alongX ? r.x1 : r.z1) : (alongX ? r.x2 : r.z2);
+      const hi = pos ? (alongX ? r.x2 : r.z2) : (alongX ? r.x1 : r.z1);
+      if (p.sanuSienas && lower) {                           // trīsstūra sienas zem posma abās pusēs
+        const t = WALL_T, cap = WALL_H, u0 = p.h0 - T, u1 = p.h1 - T;
+        const pts = [new THREE.Vector2(lo, 0), new THREE.Vector2(hi, 0), new THREE.Vector2(hi, Math.min(u1, cap))];
+        if (u1 > cap && u0 < cap) pts.push(new THREE.Vector2(lo + (hi - lo) * (cap - u0) / (u1 - u0), cap));
+        pts.push(new THREE.Vector2(lo, Math.min(Math.max(u0, 0), cap)));
+        if (p.galaSiena) {
+          const hh = Math.min(u1, cap), off = hi - Math.sign(hi - lo) * t / 2;
+          const m = new THREE.Mesh(alongX ? new THREE.BoxGeometry(t, hh, r.d) : new THREE.BoxGeometry(r.w, hh, t), wallMat);
+          if (alongX) m.position.set(off, hh / 2, r.cz); else m.position.set(r.cx, hh / 2, off);
+          m.castShadow = true; m.receiveShadow = true; g.add(m);
+        }
+        (alongX ? [r.z1 + t / 2, r.z2 - t / 2] : [r.x1 + t / 2, r.x2 - t / 2]).forEach(c => {
+          const sh = new THREE.Shape(pts);
+          const geo = new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false });
+          const m = new THREE.Mesh(geo, wallMat);
+          if (alongX) m.position.z = c - t / 2;
+          else { m.rotation.y = -Math.PI / 2; m.position.x = c + t / 2; }
+          m.castShadow = true; m.receiveShadow = true;
+          g.add(m);
+        });
+      }
+      (alongX ? [r.z1 + 0.06, r.z2 - 0.06] : [r.x1 + 0.06, r.x2 - 0.06]).forEach(c => {
+        const A = alongX ? new THREE.Vector3(lo, p.h0 - 0.12, c) : new THREE.Vector3(c, p.h0 - 0.12, lo);
+        const B = alongX ? new THREE.Vector3(hi, p.h1 - 0.12, c) : new THREE.Vector3(c, p.h1 - 0.12, hi);
+        const bm = beam(g, A, B, 0.1, 0.22, edgeMat);
+        if (see) bm.castShadow = false;
+      });
+    });
+    return g;
+  }
+  (SKOLA.iekskapnes || []).forEach(def => {
+    const M = stairMats();
+    [def.no, def.lidz].forEach((nr, j) => {
+      const fi = SKOLA.stavi.findIndex(st => st.nr === nr);
+      if (fi < 0) return;
+      const g = buildStair(def, M, j === 0);
+      // ja no šī stāva tās pašas kāpnes turpinās uz augšu, nosaukumu rāda tikai vienreiz
+      const dupLabel = j > 0 && SKOLA.iekskapnes.some(d => d !== def && d.nos === def.nos && d.no === nr);
+      g.position.y = -(nr - def.no) * LEVEL_H;      // augšējā stāvā kāpnes iet uz leju
+      floors[fi].add(g);
+      if (j > 0) onlySingle.push(g);                 // skatā "Visi" rāda tikai vienu reizi
+      const all = [];
+      g.traverse(o => { if (o.isMesh) all.push(o); });
+      if (j > 0) {                                     // neredzamas šahtas sienas (tikai dziļums)
+        const bb = def.posmi.map(p => rect(p.r)).reduce((a, r) => ({ x1: Math.min(a.x1, r.x1), z1: Math.min(a.z1, r.z1),
+                                                                    x2: Math.max(a.x2, r.x2), z2: Math.max(a.z2, r.z2) }));
+        const e = 0.15, y1 = -0.5, y2 = LEVEL_H - 0.02, hh = y2 - y1;
+        [[bb.x1 - e, bb.z1 - e, bb.x2 + e, bb.z1 - e], [bb.x1 - e, bb.z2 + e, bb.x2 + e, bb.z2 + e],
+         [bb.x1 - e, bb.z1 - e, bb.x1 - e, bb.z2 + e], [bb.x2 + e, bb.z1 - e, bb.x2 + e, bb.z2 + e]].forEach(([ax, az, bx, bz]) => {
+          const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.hypot(bx - ax, bz - az), hh), occMat);
+          m.position.set((ax + bx) / 2, y1 + hh / 2, (az + bz) / 2);
+          m.rotation.y = -Math.atan2(bz - az, bx - ax);
+          m.renderOrder = -1;
+          g.add(m);
+        });
+      }
+      const r0 = rect(def.posmi[0].r);
+      const room = {
+        kind: 'floor', floorIdx: fi, floorName: nr + '. stāvs', nos: def.nos, tipsNos: 'Kāpnes',
+        krasa: TIPI.kapnes.krasa, apraksts: def.apraksts || ('Kāpnes no ' + def.no + '. uz ' + def.lidz + '. stāvu.'),
+        rows: [['Savieno', def.no + '. un ' + def.lidz + '. stāvu']],
+        group: floors[fi], mats: [M.s, M.e, M.st, M.et], pick: all, label: null, searchable: j === 0,
+        mpos: new THREE.Vector3(r0.cx, (nr === def.no ? 0 : -LEVEL_H) + 2.6, r0.cz)
+      };
+      all.forEach(m => { m.userData.room = room; });
+      if (SKOLA.telpuNosaukumi && !dupLabel) {
+        const sp = makeLabel(def.nos);
+        placeLabel(sp, r0.cx, WALL_H + 0.9, r0.cz, 1.1, Math.max(r0.w, r0.d) * 0.95);
+        floors[fi].add(sp); room.label = sp;
+      }
+      floors[fi].userData.rooms.push(room);
+      allRooms.push(room);
+    });
+  });
+}
+
+// ---------- building massing (teritorijas skatam) ----------
+const massing = new THREE.Group();
+building.add(massing);
+const massMat = new THREE.MeshStandardMaterial({ color: '#f4f5f7', roughness: 0.9 });
+const schoolRoom = {
+  kind: 'mass', floorName: 'Teritorija', nos: 'Skolas ēka', tipsNos: 'Ēka', krasa: '#f4f5f7',
+  apraksts: 'J. Rozentāla iela 19. Izvēlies stāvu augšā, lai redzētu telpas.',
+  rows: [['Stāvi', String(SKOLA.stavi.length)]],
+  group: massing, mats: [massMat], pick: [], label: null, searchable: true,
+  mpos: new THREE.Vector3(36, COKOLS + SKOLA.stavi.length * LEVEL_H + 1, 10)
+};
+const plinthMat = new THREE.MeshStandardMaterial({ color: '#c3c6cb', roughness: 0.95 });
+SKOLA.stavi.forEach((st, i) => {
+  const tl = st.telpas.filter(t => !t.ara && !t.atvere);
+  const rs = tl.map(t => rect(t.apjoms || t.r));
+  if (i === 0 && COKOLS > 0) rs.forEach(r => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(r.w, COKOLS, r.d), plinthMat);
+    p.position.set(r.cx, COKOLS / 2, r.cz); p.castShadow = true; p.receiveShadow = true;
+    p.userData.room = schoolRoom; schoolRoom.pick.push(p); massing.add(p);
+  });
+  (st.margas || []).forEach(m => massing.add(makeRailing(m, COKOLS)));
+  st.telpas.filter(t => t.ara).forEach(t => {
+    const g = makeOutside(t);
+    g.children.forEach(m => { m.userData.room = schoolRoom; schoolRoom.pick.push(m); });
+    massing.add(g);
+  });
+  rs.forEach((r, k) => {
+    // izlaiž telpas, kas pilnībā ietilpst citā (lai jumti nemirgo)
+    if (rs.some((o, j) => j !== k && o.x1 <= r.x1 && o.z1 <= r.z1 && o.x2 >= r.x2 && o.z2 >= r.z2 &&
+        (o.w * o.d > r.w * r.d || j < k))) return;
+    const h = tl[k].augstums || LEVEL_H;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(r.w, h, r.d), massMat);
+    m.position.set(r.cx, COKOLS + i * LEVEL_H + h / 2, r.cz);
+    m.castShadow = true; m.receiveShadow = true;
+    m.userData.room = schoolRoom; schoolRoom.pick.push(m);
+    massing.add(m);
+  });
+});
+(SKOLA.pildijums || []).forEach(f => {
+  const r = rect(f.r), h = LEVEL_H - 0.04;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(r.w, h, r.d), massMat);
+  m.position.set(r.cx, COKOLS + (f.stavs - 1) * LEVEL_H + h / 2, r.cz);
+  m.castShadow = true; m.receiveShadow = true;
+  m.userData.room = schoolRoom; schoolRoom.pick.push(m);
+  massing.add(m);
+});
+{
+  const sp = makeLabel('Skolas ēka');
+  placeLabel(sp, 36, COKOLS + SKOLA.stavi.length * LEVEL_H + 3, 10, 3.2);
+  massing.add(sp);
+  schoolRoom.label = sp;
+}
+allRooms.push(schoolRoom);
+
+// ---------- territory ----------
+const terRooms = [schoolRoom];
+
+function terRoom(o) {
+  const room = Object.assign({
+    kind: 'ter', floorName: 'Teritorija', apraksts: '', mats: [], pick: [], label: null,
+    searchable: true, group: territory
+  }, o);
+  room.pick.forEach(m => { m.userData.room = room; });
+  if (o.labelPos) {
+    const sp = makeLabel(room.nos);
+    placeLabel(sp, o.labelPos.x, o.labelPos.y, o.labelPos.z, 2.6);
+    room.group.add(sp);
+    room.label = sp;
+  }
+  allRooms.push(room); terRooms.push(room);
+  return room;
+}
+
+function flat(r, color, h, parent, rough = 1) {
+  const R = rect(r);
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: rough });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(R.w, h, R.d), mat);
+  m.position.set(R.cx, h / 2, R.cz);
+  m.receiveShadow = true;
+  (parent || territory).add(m);
+  return { m, mat, R };
+}
+
+function lineLoop(pts, y, parent) {
+  const g = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], y, p[1])));
+  const l = new THREE.LineLoop(g, lineMat);
+  parent.add(l);
+  return l;
+}
+function lineStrip(pts, y, parent) {
+  const g = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], y, p[1])));
+  parent.add(new THREE.Line(g, lineMat));
+}
+const rectPts = (cx, cz, w, d) => [[cx - w / 2, cz - d / 2], [cx + w / 2, cz - d / 2], [cx + w / 2, cz + d / 2], [cx - w / 2, cz + d / 2]];
+const arcPts = (cx, cz, r, a0, a1, n = 40) => Array.from({ length: n + 1 }, (_, i) => {
+  const a = a0 + (a1 - a0) * i / n; return [cx + Math.cos(a) * r, cz + Math.sin(a) * r];
+});
+
+// grass, roads, paths
+flat(TER.zaliens, '#b6d69c', 0.04);
+TER.celi.forEach(r => flat(r, '#c4c9cf', 0.09));
+(TER.betons || []).forEach(r => flat(r, '#d6d2ca', 0.07));
+TER.takas.forEach(r => flat(r, '#d6d2ca', 0.075));
+// celiņi kā lauztas līnijas
+{
+  const wm = new THREE.MeshStandardMaterial({ color: '#d6d2ca', roughness: 1 });
+  const roadMat = new THREE.MeshStandardMaterial({ color: '#c4c9cf', roughness: 1 });
+  (TER.celini || []).forEach(c => {
+    const w = c.platums || 2.5;
+    const mat = c.cels ? roadMat : wm, h = c.cels ? 0.09 : 0.075;
+    for (let i = 0; i < c.p.length - 1; i++) {
+      const [x1, z1] = c.p[i], [x2, z2] = c.p[i + 1];
+      const len = Math.hypot(x2 - x1, z2 - z1);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, w), mat);
+      m.position.set((x1 + x2) / 2, h / 2, (z1 + z2) / 2);
+      m.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+      m.receiveShadow = true;
+      territory.add(m);
+    }
+    c.p.slice(1, -1).forEach(([x, z]) => {
+      const j = new THREE.Mesh(new THREE.CylinderGeometry(w / 2, w / 2, h, 20), mat);
+      j.position.set(x, h / 2, z); j.receiveShadow = true; territory.add(j);
+    });
+  });
+}
+
+// objects
+TER.objekti.forEach(o => {
+  const v = TER_VEIDI[o.veids] || TER_VEIDI.pagalms;
+  const h = o.veids === 'eka' ? (o.augstums || v.h) : v.h;
+  const { m, mat, R } = flat(o.r, v.krasa, h, null, 0.9);
+  if (o.veids === 'eka') m.castShadow = true;
+  if (o.veids === 'stavvieta') {
+    for (let x = R.x1 + 1.5; x < R.x2 - 1; x += 2.6) {
+      lineStrip([[x, R.z1 + 0.5], [x, R.z1 + 5.5]], h + 0.02, territory);
+      lineStrip([[x, R.z2 - 5.5], [x, R.z2 - 0.5]], h + 0.02, territory);
+    }
+  }
+  terRoom({
+    nos: o.nos, tipsNos: v.nos, krasa: v.krasa, apraksts: o.apraksts || '',
+    rows: [['Vieta', 'Teritorija'], ['Izmērs', `≈ ${Math.round(R.w)} × ${Math.round(R.d)} m`]],
+    mats: [mat], pick: [m],
+    mpos: new THREE.Vector3(R.cx, h + 0.4, R.cz),
+    labelPos: new THREE.Vector3(R.cx, h + 2.4, R.cz)
+  });
+});
+
+// stadium
+function stadiumPath(R, S) {
+  // taisnes gar lokālo Z asi; formas +Y pēc pagriešanas kļūst par -Z (ziemeļi)
+  const s = new THREE.Shape();
+  s.moveTo(-R, -S / 2); s.lineTo(-R, S / 2);
+  s.absarc(0, S / 2, R, Math.PI, 0, true);
+  s.lineTo(R, -S / 2);
+  s.absarc(0, -S / 2, R, 0, -Math.PI, true);
+  return s;
+}
+function stadiumPts(R, S, n = 48) {
+  const a = arcPts(0, -S / 2, R, Math.PI, 2 * Math.PI, n);   // ziemeļu loks (z negatīvs)
+  const b = arcPts(0, S / 2, R, 0, Math.PI, n);              // dienvidu loks
+  return [...a, ...b];
+}
+function extrude(shape, depth, color) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 48 });
+  g.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.95 });
+  const m = new THREE.Mesh(g, mat);
+  m.receiveShadow = true;
+  return { m, mat };
+}
+{
+  const st = TER.stadions;
+  const g = new THREE.Group();
+  g.position.set(st.centrs[0], 0, st.centrs[1]);
+  g.rotation.y = st.pagrieziens;
+  territory.add(g);
+  // lokālās koordinātas: x — uz austrumiem (sprinta puse), z — uz dienvidiem
+  const Ro = st.R, Ri = st.R - st.celins, S = st.taisne;
+  const RED = '#c9452f';
+  const sp = st.sprints;
+  const W = sp.platums, zN = -S / 2 - sp.pagarinajums, zS = S / 2 + sp.sakums, zStep = sp.lidz;
+
+  // --- viena sarkana kontūra: aplis + taisnes pagarinājumi abos galos + papildu josla līdz vidum ---
+  // kontūra, nobīdīta par d metriem uz āru (d=0 — pati sarkanā virsma)
+  function contour(d) {
+    const R = Ro + d, ln = sp.pagarinajums + d, ls = sp.sakums + d;
+    const zn = -S / 2 - ln, zs = S / 2 + ls, zst = zStep + d;
+    const xNi = Math.sqrt(Math.max(R * R - ln * ln, 0)), xSi = Math.sqrt(Math.max(R * R - ls * ls, 0));
+    const pts = [];
+    arcPts(0, -S / 2, R, Math.PI, 2 * Math.PI, 72).forEach(([x, z]) => { if (x <= xNi + 1e-6) pts.push([x, z]); });
+    pts.push([xNi, zn], [Ro + W + d, zn], [Ro + W + d, zst], [R, zst], [R, zs], [xSi, zs]);
+    arcPts(0, S / 2, R, 0, Math.PI, 72).forEach(([x, z]) => { if (x <= xSi + 1e-6) pts.push([x, z]); });
+    return new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+  }
+  const outer = contour(0);
+  // betona apmale ap stadionu (pie nojumēm un basketbola laukuma to nosedz gaiši sarkanais segums)
+  {
+    const ob = contour(st.apmale || 1.2);
+    ob.holes.push(contour(-0.15));
+    const edge = extrude(ob, 0.05, '#c4c2bc');
+    g.add(edge.m);
+  }
+  outer.holes.push(stadiumPath(Ri, S));
+  const ring = extrude(outer, 0.12, RED);
+  const infield = extrude(stadiumPath(Ri, S), 0.07, '#dcdad5');      // dienvidu (pelēkais) gals
+  const dShape = new THREE.Shape();
+  dShape.moveTo(Ri, S / 2); dShape.absarc(0, S / 2, Ri, 0, Math.PI, false); dShape.lineTo(Ri, S / 2);
+  const dRed = extrude(dShape, 0.09, RED);                             // ziemeļu (sarkanais) gals
+  g.add(ring.m, infield.m, dRed.m);
+
+  // apļa celiņi
+  for (let k = 1; k < 6; k++) lineLoop(stadiumPts(Ri + st.celins * k / 6, S), 0.13, g);
+  // austrumu taisnes celiņi turpinās aiz abiem līkumiem
+  for (let k = 0; k <= 6; k++) {
+    const r = Ri + st.celins * k / 6;
+    lineStrip([[r, -S / 2], [r, zN + 1]], 0.13, g);
+    lineStrip([[r, S / 2], [r, zS - 1]], 0.13, g);
+  }
+  lineStrip([[Ri, zS - 3], [Ro, zS - 3]], 0.13, g);   // starts
+  lineStrip([[Ri, zN + 3], [Ro, zN + 3]], 0.13, g);   // finišs
+  // papildu josla: viens skrejceliņš (ieskrējiens) no ziemeļu gala līdz smilšu bedrei
+  const b = st.bedre;
+  [-0.61, 0.61].forEach(dx => lineStrip([[b.x + dx, zN + 1], [b.x + dx, b.z - b.d / 2]], 0.13, g));
+  // apļa ārējā līnija (pēdējā celiņa mala)
+  lineLoop(stadiumPts(Ro - 0.05, S), 0.13, g);
+
+  // bieza balta līnija līkumu iekšmalā (kur beidzas futbola laukums)
+  const whiteMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6 });
+  {
+    const sh = stadiumPath(Ri, S);
+    sh.holes.push(stadiumPath(Ri - 0.45, S));
+    const gm = new THREE.ExtrudeGeometry(sh, { depth: 0.14, bevelEnabled: false, curveSegments: 64 });
+    gm.rotateX(-Math.PI / 2);
+    g.add(new THREE.Mesh(gm, whiteMat));
+  }
+  // līnijas sarkanajā galā
+  [-12, -6, 6, 12].forEach(x => lineStrip([[x, -S / 2], [x, -S / 2 - Math.sqrt(Ri * Ri - x * x) + 0.6]], 0.13, g));
+
+  terRoom({
+    nos: st.nos, tipsNos: 'Skrejceļš', krasa: RED, apraksts: st.apraksts || '',
+    rows: [['Vieta', 'Teritorija'], ['Apļa garums', '≈ ' + Math.round(2 * S + 2 * Math.PI * (Ri + 0.3)) + ' m (1. celiņš)'],
+           ['Sprinta taisne', '≈ ' + Math.round(zS - zN - 4) + ' m']],
+    mats: [ring.mat, dRed.mat, infield.mat], pick: [ring.m, dRed.m, infield.m], group: g,
+    mpos: new THREE.Vector3(0, 0.5, S / 2 + Ri * 0.55),
+    labelPos: new THREE.Vector3(0, 2.6, S / 2 + Ri * 0.75)
+  });
+
+  // --- futbola laukums: zaļais aizņem visu platumu starp taisnēm ---
+  const fieldMat = new THREE.MeshStandardMaterial({ color: '#3f9441', roughness: 0.95 });
+  const field = new THREE.Mesh(new THREE.BoxGeometry(2 * Ri, 0.06, S), fieldMat);
+  field.position.y = 0.1; field.receiveShadow = true;
+  g.add(field);
+  const [fw, fd] = st.laukums;
+  const y = 0.18;
+  lineLoop(rectPts(0, 0, fw, fd), y, g);
+  lineStrip([[-fw / 2, 0], [fw / 2, 0]], y, g);
+  lineLoop(arcPts(0, 0, 6.5, 0, Math.PI * 2, 48), y, g);
+  [-1, 1].forEach(s => {
+    lineLoop(rectPts(0, s * (fd / 2 - 6.5), 28, 13), y, g);
+    lineLoop(rectPts(0, s * (fd / 2 - 2.5), 12, 5), y, g);
+    const post = new THREE.BoxGeometry(0.15, 2.2, 0.15);
+    [-3, 3].forEach(px => { const p = new THREE.Mesh(post, whiteMat); p.position.set(px, 1.2, s * fd / 2); p.castShadow = true; g.add(p); });
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(6.15, 0.15, 0.15), whiteMat);
+    bar.position.set(0, 2.3, s * fd / 2); bar.castShadow = true; g.add(bar);
+  });
+  // caurspīdīgi tīkli abos laukuma galos, tos tur metāla stabi
+  const netMat = new THREE.MeshStandardMaterial({ color: '#ffffff', transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false });
+  const poleM = new THREE.MeshStandardMaterial({ color: '#8a929b', roughness: 0.5, metalness: 0.3 });
+  [S / 2 + 0.6, -S / 2 - 0.6].forEach(nz => {
+    const nw = 2 * Ri - 3;
+    const net = new THREE.Mesh(new THREE.PlaneGeometry(nw, 4.5), netMat);
+    net.position.set(0, 2.35, nz);
+    g.add(net);
+    for (let i = 0; i <= 6; i++) {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.7, 8), poleM);
+      p.position.set(-nw / 2 + nw * i / 6, 2.35, nz); p.castShadow = true;
+      g.add(p);
+    }
+  });
+  terRoom({
+    nos: 'Futbola laukums', tipsNos: 'Sporta laukums', krasa: '#3f9441',
+    apraksts: 'Mākslīgā seguma futbola laukums stadiona vidū.',
+    rows: [['Vieta', 'Stadions'], ['Izmērs', `≈ ${Math.round(2 * Ri)} × ${S} m`]],
+    mats: [fieldMat], pick: [field], group: g,
+    mpos: new THREE.Vector3(0, 0.5, -fd / 4),
+    labelPos: new THREE.Vector3(0, 2.6, -fd / 4)
+  });
+
+  // trenažieri pelēkajā (dienvidu) galā
+  const metal = new THREE.MeshStandardMaterial({ color: '#8a929b', roughness: 0.5, metalness: 0.3 });
+  function frame(x, z, w, h, rot) {
+    const fg = new THREE.Group();
+    [-w / 2, w / 2].forEach(px => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, h, 8), metal); p.position.set(px, h / 2, 0); p.castShadow = true; fg.add(p); });
+    const bb = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, w, 8), metal);
+    bb.rotation.z = Math.PI / 2; bb.position.y = h; bb.castShadow = true; fg.add(bb);
+    fg.position.set(x, 0.07, z); fg.rotation.y = rot || 0;
+    g.add(fg);
+  }
+  const zD = S / 2;
+  [[-11, zD + 5, 3, 2.6, 0.5], [-5, zD + 10, 2, 2.2, 0.2], [0, zD + 13, 4, 2.4, 0], [5, zD + 10, 1.5, 1.4, -0.2],
+   [11, zD + 5, 3, 2.6, -0.5], [-2, zD + 4, 2.4, 1.2, 0], [4, zD + 5, 1.2, 1.6, 0]].forEach(a => frame(...a));
+  terRoom({
+    nos: 'Trenažieru zona', tipsNos: 'Sporta laukums', krasa: '#dcdad5',
+    apraksts: 'Stieņi un trenažieri stadiona dienvidu galā.',
+    rows: [['Vieta', 'Stadions']], mats: [infield.mat], pick: [], group: g,
+    mpos: new THREE.Vector3(0, 0.5, zD + 9)
+  });
+
+  // smilšu bedre papildu joslā (vidū)
+  {
+    const pm = new THREE.MeshStandardMaterial({ color: '#e6d3a3', roughness: 1 });
+    const pit = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.14, b.d), pm);
+    pit.position.set(b.x, 0.08, b.z); pit.receiveShadow = true;
+    g.add(pit);
+    terRoom({
+      nos: 'Tāllēkšanas bedre', tipsNos: 'Smilšu bedre', krasa: '#e6d3a3',
+      rows: [['Vieta', 'Stadions']], mats: [pm], pick: [pit], group: g,
+      mpos: new THREE.Vector3(b.x, 0.5, b.z)
+    });
+  }
+
+  // gaiši sarkans segums gar rietumu taisni — savieno nojumes un basketbola laukumu ar stadionu
+  {
+    const lp = st.cels;   // { x1, x2, z1, z2 }
+    // seguma dienvidu mala = basketbola laukuma dienvidu malas līnija, turpināta līdz skrejceļam
+    const Rf = Ro - 0.3;
+    const aEnd = Math.PI - Math.asin(Math.min((lp.z2 - S / 2) / Rf, 1));
+    const bp = [[lp.x1, lp.z1], [-Rf, lp.z1], [-Rf, S / 2]];
+    arcPts(0, S / 2, Rf, Math.PI, aEnd, 32).forEach(p => bp.push(p));
+    bp.push([lp.x1, lp.z2]);
+    const sh = new THREE.Shape(bp.map(([x, z]) => new THREE.Vector2(x, -z)));
+    const band = extrude(sh, 0.06, '#e3a495');
+    g.add(band.m);
+    terRoom({
+      nos: 'Celiņš gar stadionu', tipsNos: 'Segums', krasa: '#e3a495',
+      rows: [['Vieta', 'Stadions']], mats: [band.mat], pick: [band.m], group: g,
+      mpos: new THREE.Vector3((lp.x1 - Ro) / 2, 0.4, 0), searchable: false
+    });
+  }
+
+  // nojumes (sēdvietas) uz gaiši sarkanā seguma
+  const shelterMat = new THREE.MeshStandardMaterial({ color: '#f4f5f7', roughness: 0.7 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: '#5b8fc9', roughness: 0.6 });
+  st.nojumes.forEach(([nx, nz], i) => {
+    const sg = new THREE.Group();
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.1, 5.5), shelterMat); back.position.set(-0.9, 1.05, 0);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.12, 5.7), roofMat); roof.position.set(0, 2.15, 0);
+    const s1 = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.1, 0.08), shelterMat); s1.position.set(0, 1.05, -2.8);
+    const s2 = s1.clone(); s2.position.z = 2.8;
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 5.2), shelterMat); seat.position.set(-0.55, 0.23, 0);
+    const parts = [back, roof, s1, s2, seat];
+    parts.forEach(m => { m.castShadow = true; m.receiveShadow = true; sg.add(m); });
+    sg.position.set(nx, 0.06, nz);
+    g.add(sg);
+    terRoom({
+      nos: 'Nojume ' + (i + 1), tipsNos: 'Nojume ar soliņu', krasa: '#5b8fc9',
+      apraksts: 'Nojume ar soliņu, kur var apsēsties.',
+      rows: [['Vieta', 'Stadions']], mats: [shelterMat, roofMat], pick: parts, group: g,
+      mpos: new THREE.Vector3(nx, 2.8, nz),
+      labelPos: new THREE.Vector3(nx, 4.6, nz)
+    });
+  });
+
+  // atpūtas vieta: gaiši sarkana josla gar ziemeļu līkuma ārmalu (skolas pusē) ar soliņiem
+  {
+    const sa = st.atputa;   // { a0, a1, platums, soli }
+    const R1 = Ro + (sa.nobide || 0) - 0.05, R2 = R1 + sa.platums;
+    const ring2 = [...arcPts(0, -S / 2, R2, sa.a0, sa.a1, 40), ...arcPts(0, -S / 2, R1, sa.a1, sa.a0, 40)];
+    const sh = new THREE.Shape(ring2.map(([x, z]) => new THREE.Vector2(x, -z)));
+    const pad = extrude(sh, 0.06, '#e3a495');
+    g.add(pad.m);
+    const wood = new THREE.MeshStandardMaterial({ color: '#a8754a', roughness: 0.8 });
+    const legM = new THREE.MeshStandardMaterial({ color: '#4b5259', roughness: 0.6 });
+    const parts = [pad.m];
+    const Rb = R1 + sa.platums * 0.55;
+    for (let i = 0; i < sa.soli; i++) {
+      const a = sa.a0 + (sa.a1 - sa.a0) * (i + 0.5) / sa.soli;
+      const bg = new THREE.Group();
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 0.45), wood); seat.position.set(0, 0.48, 0);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 0.06), wood); back.position.set(0, 0.78, 0.23);
+      const l1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.46, 0.5), legM); l1.position.set(-0.85, 0.23, 0);
+      const l2 = l1.clone(); l2.position.x = 0.85;
+      [seat, back, l1, l2].forEach(m => { m.castShadow = true; bg.add(m); parts.push(m); });
+      bg.position.set(Rb * Math.cos(a), 0.06, -S / 2 + Rb * Math.sin(a));
+      bg.rotation.y = Math.atan2(Math.cos(a), Math.sin(a));   // ar skatu uz skrejceļu
+      g.add(bg);
+    }
+    const am = (sa.a0 + sa.a1) / 2;
+    terRoom({
+      nos: 'Soliņi', tipsNos: 'Atpūtas vieta', krasa: '#a8754a',
+      apraksts: 'Soliņi gar stadiona ziemeļu līkumu, skolas pusē.',
+      rows: [['Vieta', 'Stadions']], mats: [pad.mat, wood], pick: parts, group: g,
+      mpos: new THREE.Vector3(Rb * Math.cos(am), 1.2, -S / 2 + Rb * Math.sin(am)),
+      labelPos: new THREE.Vector3(Rb * Math.cos(am), 3, -S / 2 + Rb * Math.sin(am))
+    });
+  }
+
+  // apgaismojuma stabi
+  const poleMat = new THREE.MeshStandardMaterial({ color: '#e9ecef', roughness: 0.6 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: '#fdfdf2', emissive: '#55554a', roughness: 0.4 });
+  [[Ro + W + 1.2, -S / 3, -1], [Ro + 1.5, S / 3, -1], [st.cels.x1 - 1.5, -S / 3, 1], [st.cels.x1 - 1.5, S / 3, 1]].forEach(([x, z, side]) => {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 16, 8), poleMat);
+    p.position.set(x, 8, z); p.castShadow = true; g.add(p);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 1.6), lampMat);
+    head.position.set(x + side * 0.4, 16, z); head.castShadow = true; g.add(head);
+  });
+}
+
+// basketbola laukums
+{
+  const bb = TER.basketbols;
+  const g = new THREE.Group();
+  g.position.set(bb.centrs[0], 0, bb.centrs[1]);
+  g.rotation.y = bb.pagrieziens;
+  territory.add(g);
+  const [w, d] = bb.izmers;
+  const edgeMat = new THREE.MeshStandardMaterial({ color: '#8cc6ec', roughness: 0.9 });
+  const mat = new THREE.MeshStandardMaterial({ color: '#2f7fd0', roughness: 0.9 });
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(w + 3, 0.09, d + 3), edgeMat);
+  edge.position.y = 0.045; edge.receiveShadow = true;
+  const court = new THREE.Mesh(new THREE.BoxGeometry(w - 1.4, 0.1, d - 1.4), mat);
+  court.position.y = 0.05; court.receiveShadow = true;
+  g.add(edge, court);
+  const y = 0.12;
+  lineLoop(rectPts(0, 0, w - 1.6, d - 1.6), y, g);
+  lineStrip([[-(w - 1.6) / 2, 0], [(w - 1.6) / 2, 0]], y, g);
+  lineLoop(arcPts(0, 0, 1.8, 0, Math.PI * 2, 32), y, g);
+  const pm = new THREE.MeshStandardMaterial({ color: '#ffffff' });
+  [-1, 1].forEach(s => {
+    const base = s * (d - 1.6) / 2;
+    lineLoop(rectPts(0, base - s * 2.9, 4.9, 5.8), y, g);
+    lineStrip(arcPts(0, base - s * 1.6, 6.75, s < 0 ? 0 : Math.PI, s < 0 ? Math.PI : 2 * Math.PI), y, g);
+    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.05, 0.15), pm);
+    pole.position.set(0, 1.55, base + s * 0.6); pole.castShadow = true; g.add(pole);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.05, 0.06), pm);
+    board.position.set(0, 3.3, base - s * 0.9); board.castShadow = true; g.add(board);
+  });
+  terRoom({
+    nos: bb.nos, tipsNos: 'Sporta laukums', krasa: '#2f7fd0', apraksts: bb.apraksts || '',
+    rows: [['Vieta', 'Teritorija'], ['Izmērs', `≈ ${w} × ${d} m`]],
+    mats: [mat, edgeMat], pick: [court, edge], group: g,
+    mpos: new THREE.Vector3(0, 0.5, 0),
+    labelPos: new THREE.Vector3(0, 4.6, 0)
+  });
+}
+
+// ---------- detaļas ap skolu: kāpnes, velosipēdu novietnes, zemes taka ----------
+{
+  const D = TER.detalas || {};
+  const concrete = new THREE.MeshStandardMaterial({ color: '#cfcac1', roughness: 0.95 });
+  const metal = new THREE.MeshStandardMaterial({ color: '#7d858d', roughness: 0.45, metalness: 0.5 });
+  const dark = new THREE.MeshStandardMaterial({ color: '#4b5259', roughness: 0.6 });
+
+  // kāpnes pie galvenās ieejas (paceļas uz +x pusi, pret ieeju)
+  if (D.ieejasKapnes) {
+    const k = D.ieejasKapnes, R = rect(k.r), n = k.pakapieni;
+    const parts = [];
+    for (let i = 0; i < n; i++) {
+      const d = R.w / n, h = k.augstums * (i + 1) / n;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(d * (n - i), h, R.d), concrete);
+      m.position.set(R.x2 - d * (n - i) / 2, h / 2, R.cz);
+      m.castShadow = true; m.receiveShadow = true;
+      territory.add(m); parts.push(m);
+    }
+    terRoom({ nos: 'Ieejas kāpnes', tipsNos: 'Kāpnes', krasa: '#cfcac1', rows: [['Vieta', 'Galvenā ieeja']],
+      mats: [concrete], pick: parts, mpos: new THREE.Vector3(R.cx, 1, R.cz) });
+  }
+
+  // metāla kāpnes pie aizmugures ieejas: uz augšu gar sienu līdz durvīm
+  if (D.metalaKapnes) {
+    const k = D.metalaKapnes, n = 16, run = k.z1 - k.z0, H = k.augstums;
+    const g = new THREE.Group(); territory.add(g);
+    const parts = [];
+    for (let i = 0; i < n; i++) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(k.platums, 0.05, run / n * 1.05), metal);
+      st.position.set(k.x, H * (i + 1) / n, k.z0 + run * (i + 0.5) / n);
+      g.add(st); parts.push(st);
+    }
+    // sliekšņi (stringers) un margas
+    [-1, 1].forEach(sd => {
+      const L = Math.hypot(run, H);
+      const s = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, L), metal);
+      s.position.set(k.x + sd * k.platums / 2, H / 2, k.z0 + run / 2);
+      s.rotation.x = -Math.atan2(H, run) * Math.sign(run);
+      g.add(s); parts.push(s);
+      const r = s.clone(); r.scale.set(0.6, 0.25, 1); r.position.y += 1; g.add(r);
+    });
+    // laukumiņš augšā un balsti
+    const land = new THREE.Mesh(new THREE.BoxGeometry(k.platums, 0.08, k.laukums), metal);
+    land.position.set(k.x, H, k.z1 + Math.sign(run) * k.laukums / 2); g.add(land); parts.push(land);
+    [[-1, 0], [1, 0], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 0.08), metal);
+      p.position.set(k.x + sx * k.platums / 2, H / 2, k.z1 + Math.sign(run) * k.laukums * sz);
+      g.add(p);
+    });
+    // durvis sienā
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.1, 0.06), dark);
+    door.position.set(k.x, H + 1.05, k.durvisZ); g.add(door);
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    terRoom({ nos: 'Metāla kāpnes', tipsNos: 'Aizmugures ieeja', krasa: '#7d858d',
+      apraksts: 'Metāla kāpnes pie aizmugures ieejas, augšā durvis uz skolu.',
+      rows: [['Vieta', 'Pie sporta zāles']], mats: [metal], pick: parts, mpos: new THREE.Vector3(k.x, H + 0.6, k.z1) });
+  }
+
+  // velosipēdu novietnes (ar jumtu vai bez)
+  const padMat = new THREE.MeshStandardMaterial({ color: '#bdb8ae', roughness: 0.95 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: '#8aa0b4', roughness: 0.5, transparent: true, opacity: 0.85 });
+  (D.velo || []).forEach(v => {
+    const R = rect(v.r);
+    const alongX = R.w >= R.d, L = Math.max(R.w, R.d);
+    const parts = [];
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(R.w, 0.08, R.d), padMat);
+    pad.position.set(R.cx, 0.04, R.cz); pad.receiveShadow = true; territory.add(pad); parts.push(pad);
+    const n = Math.max(2, Math.floor(L / 0.8));
+    for (let i = 0; i < n; i++) {
+      const t = -L / 2 + L * (i + 0.5) / n;
+      const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.025, 6, 16, Math.PI), metal);
+      hoop.position.set(R.cx + (alongX ? t : 0), 0.08, R.cz + (alongX ? 0 : t));
+      hoop.rotation.y = alongX ? Math.PI / 2 : 0;
+      hoop.castShadow = true; territory.add(hoop); parts.push(hoop);
+    }
+    if (v.jumts) {
+      [[R.x1 + 0.2, R.z1 + 0.2], [R.x2 - 0.2, R.z1 + 0.2], [R.x1 + 0.2, R.z2 - 0.2], [R.x2 - 0.2, R.z2 - 0.2]].forEach(([x, z]) => {
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.3, 0.1), metal);
+        p.position.set(x, 1.15, z); p.castShadow = true; territory.add(p);
+      });
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(R.w + 0.4, 0.08, R.d + 0.4), roofMat);
+      roof.position.set(R.cx, 2.35, R.cz); roof.castShadow = true; territory.add(roof); parts.push(roof);
+    }
+    terRoom({ nos: v.nos, tipsNos: 'Velosipēdu novietne', krasa: '#bdb8ae',
+      rows: [['Vieta', 'Teritorija'], ['Jumts', v.jumts ? 'Ir' : 'Nav']],
+      mats: [padMat], pick: parts, mpos: new THREE.Vector3(R.cx, v.jumts ? 2.8 : 0.9, R.cz) });
+  });
+
+  // zemes taka
+  const dirt = new THREE.MeshStandardMaterial({ color: '#b08d68', roughness: 1 });
+  (D.zemesTakas || []).forEach(c => {
+    const w = c.platums || 1.2;
+    for (let i = 0; i < c.p.length - 1; i++) {
+      const [x1, z1] = c.p[i], [x2, z2] = c.p[i + 1];
+      const len = Math.hypot(x2 - x1, z2 - z1);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, w), dirt);
+      m.position.set((x1 + x2) / 2, 0.03, (z1 + z2) / 2);
+      m.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+      m.receiveShadow = true; territory.add(m);
+    }
+    c.p.slice(1, -1).forEach(([x, z]) => {
+      const j = new THREE.Mesh(new THREE.CylinderGeometry(w / 2, w / 2, 0.06, 16), dirt);
+      j.position.set(x, 0.03, z); territory.add(j);
+    });
+  });
+}
+
+// koki
+{
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const spots = [];
+  TER.koki.forEach(([x1, z1, x2, z2]) => {
+    const len = Math.hypot(x2 - x1, z2 - z1);
+    const n = Math.max(1, Math.round(len / TER.kokuAtstarpe));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      spots.push([x1 + (x2 - x1) * t + (rnd() - 0.5) * 2, z1 + (z2 - z1) * t + (rnd() - 0.5) * 2, 0.75 + rnd() * 0.5]);
+    }
+  });
+  const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.3, 1, 6),
+    new THREE.MeshStandardMaterial({ color: '#8a6a4f', roughness: 1 }), spots.length);
+  const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1),
+    new THREE.MeshStandardMaterial({ color: '#5f9e57', roughness: 0.9, flatShading: true }), spots.length);
+  const M = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3();
+  spots.forEach(([x, z, k], i) => {
+    M.compose(v.set(x, 1.5 * k, z), q, s.set(k, 3 * k, k)); trunk.setMatrixAt(i, M);
+    M.compose(v.set(x, 4.2 * k, z), q, s.set(2.6 * k, 2.9 * k, 2.6 * k)); crown.setMatrixAt(i, M);
+  });
+  trunk.castShadow = crown.castShadow = true;
+  territory.add(trunk, crown);
+}
+
+// ziemeļu bulta
+const northLabel = makeLabel('↑ Ziemeļi');
+placeLabel(northLabel, 78, 4, -114, 3.4);
+territory.add(northLabel);
+
+// ---------- marker ----------
+const marker = new THREE.Group();
+const pinMat = new THREE.MeshStandardMaterial({ color: '#ff6a3d', roughness: 0.4, metalness: 0.1 });
+const cone = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.5, 24), pinMat);
+cone.rotation.x = Math.PI; cone.position.y = 0.75;
+const ball = new THREE.Mesh(new THREE.SphereGeometry(0.85, 24, 16), pinMat);
+ball.position.y = 1.9;
+const hole = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff' }));
+hole.position.set(0, 1.95, 0.6);
+marker.add(cone, ball, hole);
+marker.traverse(o => { o.castShadow = true; });
+marker.visible = false;
+
+// ---------- UI ----------
+const floorsEl = document.getElementById('floors');
+const buttons = [];
+const lbl = document.createElement('span');
+lbl.className = 'lbl'; lbl.textContent = 'Stāvs';
+floorsEl.appendChild(lbl);
+function addBtn(text, m, title, longText) {
+  const b = document.createElement('button');
+  b.innerHTML = text + (longText ? `<span class="long">${longText}</span>` : '');
+  if (m === 'all' || m === 'ter' || m === 'home') b.classList.add('wide');
+  if (m === 'home') b.classList.remove('wide');
+  if (title) b.title = title;
+  b.onclick = () => m === 'home' ? resetView() : setFloor(m);
+  b.dataset.mode = String(m);
+  floorsEl.appendChild(b);
+  if (m !== 'home') buttons.push(b);
+}
+SKOLA.stavi.forEach((st, i) => addBtn(String(st.nr), i, st.nr + '. stāvs', '. stāvs'));
+addBtn('Visi', 'all', 'Visi stāvi kopā ar teritoriju');
+addBtn('Teritorija', 'ter', 'Skolas teritorija un stadions');
+addBtn('⟲', 'home', 'Sākotnējais skats');
+
+const legend = document.getElementById('legend');
+function renderLegend(m) {
+  const items = m === 'ter'
+    ? [['#f4f5f7', 'Ēka'], ['#c9452f', 'Skrejceļš'], ['#3f9441', 'Futbola laukums'], ['#2f7fd0', 'Basketbola laukums'],
+       ['#c4c9cf', 'Ceļš'], ['#b9bfc6', 'Autostāvvieta'], ['#d8c8a6', 'Pagalms'], ['#b6d69c', 'Zāliens']]
+    : Object.values(TIPI).map(t => [t.krasa, t.nos]);
+  legend.innerHTML = '';
+  items.forEach(([c, n]) => {
+    const d = document.createElement('div');
+    d.innerHTML = `<i style="background:${c}"></i>${n}`;
+    legend.appendChild(d);
+  });
+}
+
+let mode = null;
+const desiredTarget = new THREE.Vector3();
+let desiredDist = null;
+// kamera pati brauc uz mērķi tikai pēc pogas/meklēšanas; tiklīdz lietotājs
+// sāk grozīt, pārvietot vai tuvināt, automātiskā kustība apstājas
+let flying = false;
+controls.addEventListener('start', () => { desiredDist = null; flying = false; });
+
+// šauram (telefona) ekrānam kamera attālinās, lai ēka ietilptu
+const narrowK = () => camera.aspect < 1 ? Math.pow(camera.aspect, -0.85) : 1;
+const distFor = m => HOME_OFFSET.length() * (m === 'ter' ? 2.8 : m === 'all' ? 2.1 : 1) * narrowK();
+const targetFor = m => m === 'ter' ? TER_C.clone()
+  : m === 'all' ? new THREE.Vector3(TER_C.x * 0.5, ((floors.length - 1) * SPACING) / 2, TER_C.z * 0.5)
+  : floorCenter(m);
+
+function floorCenter(i) {
+  const f = floors[i];
+  if (!f.userData.center) {
+    const y = f.position.y; f.position.y = 0;
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    f.userData.rooms.forEach(r => r.pick.forEach(m => box.expandByObject(m)));
+    f.position.y = y;
+    const c = box.getCenter(new THREE.Vector3());
+    f.userData.center = new THREE.Vector3(c.x, 0, c.z);
+  }
+  return f.userData.center.clone();
+}
+
+function visibleIn(room, m) {
+  if (room.kind === 'floor') return m === 'all' || m === room.floorIdx;
+  if (room.kind === 'mass') return m === 'ter';
+  return m === 'all' || m === 'ter';
+}
+
+function setFloor(m) {
+  const prev = mode;
+  mode = m;
+  floors.forEach((f, i) => {
+    const show = m === 'all' || m === i;
+    const wasVisible = f.visible;
+    f.visible = show;
+    f.userData.targetY = m === 'all' ? COKOLS + i * SPACING : 0;
+    if (show && m !== 'all' && (!wasVisible || f.position.y !== 0)) f.position.y = 5;
+    f.userData.rooms.forEach(r => { if (r.label) r.label.visible = m !== 'all'; (r.extraLabels || []).forEach(l => { l.visible = m !== 'all'; }); });
+  });
+  territory.visible = m === 'all' || m === 'ter';
+  terPins.visible = m === 'all' || m === 'ter' || m === 0;
+  terPins.position.y = (m === 'all' || m === 'ter') ? 0 : -COKOLS;
+  // stāva skatā zeme ir zem cokola, lai ārējās kāpnes būtu redzamas līdz zemei
+  ground.position.y = (m === 'all' || m === 'ter') ? -0.03 : -COKOLS - 0.03;
+  ground.visible = m === 'all' || m === 'ter' || m === 0;   // augšējos stāvos zemi neslēpj kāpnes
+  massing.visible = m === 'ter';
+  terRooms.forEach(r => { if (r.label) r.label.visible = m === 'ter'; });
+  northLabel.visible = m === 'ter' || m === 'all';
+  onlySingle.forEach(o => { o.visible = m !== 'all'; });
+  setShadow(m === 'all' || m === 'ter');
+  renderLegend(m);
+
+  buttons.forEach(b => b.classList.toggle('on', b.dataset.mode === String(m)));
+  desiredTarget.copy(targetFor(m)); flying = true;
+  const kind = x => (x === 'all' || x === 'ter') ? x : 'floor';
+  if (prev === null || kind(prev) !== kind(m)) desiredDist = distFor(m);
+  if (selected && !visibleIn(selected, m)) deselect();
+}
+
+function resetView() {
+  desiredTarget.copy(targetFor(mode));
+  controls.target.copy(desiredTarget);
+  const dir = HOME_OFFSET.clone().normalize();
+  camera.position.copy(desiredTarget).addScaledVector(dir, distFor(mode));
+  desiredDist = null;
+}
+
+// ---------- picking ----------
+const ray = new THREE.Raycaster();
+const ptr = new THREE.Vector2();
+let hovered = null, selected = null, downAt = null;
+
+function pickables() {
+  const out = [];
+  allRooms.forEach(r => { if (visibleIn(r, mode)) out.push(...r.pick); });
+  return out;
+}
+function pick(e) {
+  const rc = renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(pickables(), false)[0];
+  return hit ? hit.object.userData.room : null;
+}
+function paint(room) {
+  if (!room) return;
+  const e = room === selected ? 0x553322 : room === hovered ? 0x2a2a2a : 0x000000;
+  room.mats.forEach(m => m.emissive.setHex(e));
+}
+
+renderer.domElement.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  if (placing || moving) { renderer.domElement.style.cursor = 'crosshair'; return; }
+  const pin = pickPin(e);
+  const r = pin ? null : pick(e);
+  if (r !== hovered) { const old = hovered; hovered = r; paint(old); paint(r); }
+  renderer.domElement.style.cursor = (pin || r) ? 'pointer' : 'grab';
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
+  if (editMode && (placing || moving)) { placeAt(e); return; }
+  const t = pickPin(e);
+  if (t) { openTask(t, false); return; }
+  const r = pick(e);
+  closeTask();
+  if (r) select(r); else deselect();
+});
+
+const info = document.getElementById('info');
+function select(room, fly) {
+  const old = selected; selected = room; paint(old); paint(room);
+  room.group.add(marker);
+  marker.position.copy(room.mpos);
+  marker.userData.baseY = room.mpos.y;
+  const big = room.kind !== 'floor';
+  marker.scale.setScalar(big ? 2 : 1);
+  marker.visible = true;
+  document.getElementById('i-name').textContent = room.nos;
+  document.getElementById('i-dot').style.background = room.krasa;
+  document.getElementById('i-type').textContent = room.tipsNos;
+  const dl = document.getElementById('i-rows');
+  dl.innerHTML = '';
+  room.rows.forEach(([k, v]) => {
+    const dt = document.createElement('dt'); dt.textContent = k;
+    const dd = document.createElement('dd'); dd.textContent = v;
+    dl.append(dt, dd);
+  });
+  document.getElementById('i-desc').textContent = room.apraksts || '';
+  info.classList.remove('hidden');
+  if (fly) {
+    room.group.updateMatrixWorld(true);
+    const w = room.group.localToWorld(room.mpos.clone());
+    w.y = room.kind === 'floor' ? floors[room.floorIdx].userData.targetY : 0;
+    desiredTarget.copy(w); flying = true;
+  }
+}
+function deselect() {
+  const old = selected; selected = null; paint(old);
+  marker.visible = false;
+  info.classList.add('hidden');
+}
+document.getElementById('close').onclick = deselect;
+
+// ---------- search ----------
+const q = document.getElementById('q');
+const results = document.getElementById('results');
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+function showResults() {
+  const s = norm(q.value);
+  results.innerHTML = '';
+  if (!s) { results.classList.remove('show'); return; }
+  const found = allRooms.filter(r => r.searchable && norm(r.nos).includes(s))
+    .sort((a, b) => (norm(b.nos).startsWith(s) - norm(a.nos).startsWith(s))).slice(0, 12);
+  const ft = allTasks().filter(t => norm(t.nos).includes(s)).slice(0, 6);
+  ft.forEach(t => {
+    const b = document.createElement('button');
+    b.innerHTML = `📍 <span style="flex:1;color:inherit;font-size:14px;margin-left:6px"></span><span>${layerName(t)}</span>`;
+    b.children[0].textContent = taskTitle(t);
+    b.onclick = () => { results.classList.remove('show'); q.blur(); goToTask(t); };
+    results.appendChild(b);
+  });
+  if (!found.length && !ft.length) results.innerHTML = '<div class="none">Nekas netika atrasts</div>';
+  found.forEach(r => {
+    const b = document.createElement('button');
+    b.innerHTML = `${r.nos}<span>${r.floorName}</span>`;
+    b.onclick = () => goTo(r);
+    results.appendChild(b);
+  });
+  results.classList.add('show');
+}
+function goTo(r) {
+  if (!visibleIn(r, mode)) setFloor(r.kind === 'floor' ? r.floorIdx : 'ter');
+  select(r, true);
+  results.classList.remove('show');
+  q.blur();
+}
+q.addEventListener('input', showResults);
+q.addEventListener('focus', showResults);
+q.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const b = results.querySelector('button'); if (b) b.click(); }
+  if (e.key === 'Escape') { results.classList.remove('show'); q.blur(); }
+});
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.search')) results.classList.remove('show'); });
+
+// ================= UZDEVUMI (marķieri, plāni, progress, redaktors) =================
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+// divi uzdevumu veidi — abi vienmēr redzami, skolēni tos neizvēlas
+const VEIDI = {
+  laiks:  { nos: 'Uzdevums uz laiku',    isais: 'Uz laiku',    ikona: '⏱', krasa: '#7c3aed' },
+  punkti: { nos: 'Uzdevums uz punktiem', isais: 'Uz punktiem', ikona: '★', krasa: '#ff6a3d' }
+};
+const VEIDU_SECIBA = ['laiks', 'punkti'];
+const DONE_COL = '#2e9e5b';
+function normalizeTasks(d) {
+  d = d && typeof d === 'object' ? d : {};
+  const marki = Array.isArray(d.marki) ? d.marki : [];
+  marki.forEach(m => {
+    if (!VEIDI[m.veids]) m.veids = 'punkti';
+    delete m.plani;
+    m.nos = m.nos || 'Uzdevums'; m.apraksts = m.apraksts || '';
+  });
+  return { marki };
+}
+const FILE_TASKS = normalizeTasks(JSON.parse(document.getElementById('uzdevumi-dati').textContent || '{}'));
+const EDIT_ALLOWED = location.protocol === 'file:' || /rediget/i.test(location.hash + location.search);
+const DRAFT_KEY = 'skola3d-uzdevumi-melnraksts-v2';
+let TASKS = FILE_TASKS;
+if (EDIT_ALLOWED) {
+  const d = store.get(DRAFT_KEY);
+  if (d) { try { TASKS = normalizeTasks(JSON.parse(d)); } catch (e) {} }
+}
+
+let editMode = false, placing = null, moving = null, curTask = null;
+const allTasks = () => TASKS.marki;
+const tasksOf = v => TASKS.marki.filter(m => m.veids === v);
+const taskNum = t => tasksOf(t.veids).indexOf(t) + 1;
+const veids = t => VEIDI[t.veids] || VEIDI.punkti;
+const taskTitle = t => veids(t).ikona + ' ' + taskNum(t) + '. ' + t.nos;
+const layerName = m => m.slanis === 'ter' ? 'Teritorija' : (SKOLA.stavi[m.slanis] ? SKOLA.stavi[m.slanis].nr + '. stāvs' : '?');
+const parentOf = m => m.slanis === 'ter' ? terPins : floors[m.slanis];
+
+// --- izpildītie (katrā telefonā atsevišķi) ---
+let done = new Set();
+const DONE_KEY = 'skola3d-izpilditi';
+function loadDone() { try { done = new Set(JSON.parse(store.get(DONE_KEY) || '[]')); } catch (e) { done = new Set(); } }
+function saveDone() { store.set(DONE_KEY, JSON.stringify([...done])); }
+function saveDraft() { if (EDIT_ALLOWED) store.set(DRAFT_KEY, JSON.stringify(TASKS)); }
+
+// --- paziņojums ---
+const toastEl = document.getElementById('toast');
+let toastT = 0;
+function toast(msg) {
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+// --- marķieru attēli ---
+const texCache = new Map();
+function pinTex(n, isDone, sel, col) {
+  const key = n + '|' + isDone + '|' + sel + '|' + col;
+  if (texCache.has(key)) return texCache.get(key);
+  const c = document.createElement('canvas'); c.width = 128; c.height = 168;
+  const x = c.getContext('2d');
+  x.beginPath(); x.moveTo(64, 166); x.lineTo(26, 96); x.lineTo(102, 96); x.closePath();
+  x.fillStyle = '#ffffff'; x.fill();
+  x.beginPath(); x.moveTo(64, 156); x.lineTo(34, 100); x.lineTo(94, 100); x.closePath();
+  x.fillStyle = col; x.fill();
+  x.beginPath(); x.arc(64, 60, 56, 0, Math.PI * 2); x.fillStyle = sel ? '#1f2933' : '#ffffff'; x.fill();
+  x.beginPath(); x.arc(64, 60, 47, 0, Math.PI * 2); x.fillStyle = col; x.fill();
+  if (isDone) { x.beginPath(); x.arc(64, 60, 36, 0, Math.PI * 2); x.fillStyle = DONE_COL; x.fill(); }
+  x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const label = isDone ? '✓' : String(n);
+  x.font = '700 ' + (isDone ? 44 : label.length > 2 ? 36 : label.length > 1 ? 46 : 54) + 'px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+  x.fillText(label, 64, 63);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  texCache.set(key, t);
+  return t;
+}
+
+const pins = new Map();
+const PIN_H = 0.062;
+function syncPins() {
+  for (const [id, sp] of pins) {
+    if (!TASKS.marki.some(m => m.id === id)) { if (sp.parent) sp.parent.remove(sp); sp.material.dispose(); pins.delete(id); }
+  }
+  TASKS.marki.forEach(m => {
+    let sp = pins.get(m.id);
+    if (!sp) {
+      sp = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true, sizeAttenuation: false }));
+      sp.center.set(0.5, 0);
+      sp.renderOrder = 20;
+      pins.set(m.id, sp);
+    }
+    const par = parentOf(m);
+    if (!par) { sp.visible = false; return; }
+    if (sp.parent !== par) par.add(sp);
+    sp.position.set(m.x, m.y + 0.15, m.z);
+    sp.userData.task = m;
+    sp.visible = true;
+    sp.material.map = pinTex(taskNum(m), done.has(m.id), curTask === m, veids(m).krasa);
+    sp.material.needsUpdate = true;
+    const h = PIN_H * (curTask === m ? 1.3 : 1) * (camera.aspect < 1 ? 0.72 : 1);
+    sp.scale.set(h * 128 / 168, h, 1);
+  });
+  updateCounts();
+  renderProgress();
+  renderMleg();
+}
+
+function shown(o) { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; }
+function setPtr(e) {
+  const rc = renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+}
+function pickPin(e) {
+  setPtr(e);
+  const vis = [...pins.values()].filter(shown);
+  const hit = ray.intersectObjects(vis, false)[0];
+  return hit ? hit.object.userData.task : null;
+}
+
+// --- skaitļi uz stāvu pogām ---
+function updateCounts() {
+  buttons.forEach(b => {
+    const m = b.dataset.mode;
+    if (m === 'all') return;
+    const layer = m === 'ter' ? 'ter' : Number(m);
+    const n = allTasks().filter(t => t.slanis === layer && !done.has(t.id)).length;
+    let c = b.querySelector('.cnt');
+    if (!n) { if (c) c.remove(); return; }
+    if (!c) { c = document.createElement('i'); c.className = 'cnt'; b.appendChild(c); }
+    c.textContent = n;
+  });
+}
+
+// --- marķieru veidu skaidrojums (nav pogas — tikai paskaidro krāsas) ---
+const mlegEl = document.getElementById('mleg');
+function renderMleg() { mlegEl.style.display = allTasks().length || editMode ? '' : 'none'; layoutTop(); }
+
+// --- progress un saraksts ---
+const progBtn = document.getElementById('prog');
+const listEl = document.getElementById('tasks');
+function renderProgress() {
+  const all = allTasks();
+  const d = all.filter(t => done.has(t.id)).length;
+  progBtn.style.display = all.length || editMode ? '' : 'none';
+  progBtn.innerHTML = `Uzdevumi <b>${d}/${all.length}</b>`;
+}
+function taskRow(t, withOrder) {
+  const li = document.createElement('li');
+  li.classList.toggle('done', done.has(t.id));
+  const num = document.createElement('span'); num.className = 'num';
+  num.style.background = done.has(t.id) ? DONE_COL : veids(t).krasa;
+  num.textContent = done.has(t.id) ? '✓' : taskNum(t);
+  const tx = document.createElement('span'); tx.className = 't'; tx.textContent = t.nos;
+  const w = document.createElement('span'); w.className = 'w'; w.textContent = layerName(t);
+  tx.appendChild(w);
+  li.append(num, tx);
+  if (withOrder) {
+    const o = document.createElement('span'); o.className = 'ord';
+    [['▲', -1], ['▼', 1]].forEach(([s, d]) => {
+      const b = document.createElement('button'); b.textContent = s; b.title = d < 0 ? 'Uz augšu' : 'Uz leju';
+      b.onclick = ev => { ev.stopPropagation(); moveTask(t, d); };
+      o.appendChild(b);
+    });
+    li.appendChild(o);
+  }
+  li.onclick = () => goToTask(t);
+  return li;
+}
+function fillGroups(ul, withOrder, emptyText) {
+  ul.innerHTML = '';
+  if (!allTasks().length) { ul.innerHTML = '<li class="empty">' + emptyText + '</li>'; return; }
+  VEIDU_SECIBA.forEach(v => {
+    const list = tasksOf(v);
+    if (!list.length) return;
+    const h = document.createElement('li'); h.className = 'grp';
+    const i = document.createElement('i'); i.style.background = VEIDI[v].krasa;
+    const d = list.filter(t => done.has(t.id)).length;
+    h.append(i, document.createTextNode(VEIDI[v].ikona + ' ' + VEIDI[v].nos + ' · ' + d + '/' + list.length));
+    ul.appendChild(h);
+    list.forEach(t => ul.appendChild(taskRow(t, withOrder)));
+  });
+}
+function renderList() {
+  const all = allTasks();
+  const d = all.filter(t => done.has(t.id)).length;
+  document.getElementById('t-sum').textContent = `Izpildīti ${d} no ${all.length}`;
+  document.getElementById('t-bar').style.width = all.length ? (d / all.length * 100) + '%' : '0';
+  fillGroups(document.getElementById('t-list'), false, 'Vēl nav neviena uzdevuma.');
+}
+function updateSide() {
+  document.body.classList.toggle('side-open', !listEl.classList.contains('hidden') || !editorEl.classList.contains('hidden'));
+}
+function openList() { closeEditorPanelIfMobile(); listEl.classList.remove('hidden'); renderList(); updateSide(); }
+progBtn.onclick = () => {
+  if (editMode) return;
+  if (listEl.classList.contains('hidden')) openList(); else { listEl.classList.add('hidden'); updateSide(); }
+};
+document.getElementById('t-close').onclick = () => { listEl.classList.add('hidden'); updateSide(); };
+
+function goToTask(t) {
+  const L = t.slanis === 'ter' ? 'ter' : t.slanis;
+  if (mode !== L && !(mode === 'all')) setFloor(L);
+  if (innerWidth <= 700) { listEl.classList.add('hidden'); updateSide(); }
+  openTask(t, true);
+}
+
+// --- uzdevuma panelis (skatīšana / rediģēšana) ---
+const taskEl = document.getElementById('task');
+const taskBody = document.getElementById('task-body');
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function openTask(t, fly) {
+  deselect();
+  curTask = t;
+  syncPins();
+  taskBody.innerHTML = '';
+  if (editMode) buildEditForm(t); else buildView(t);
+  taskEl.classList.remove('hidden');
+  if (fly) {
+    const par = parentOf(t);
+    par.updateMatrixWorld(true);
+    const w = par.localToWorld(new THREE.Vector3(t.x, t.y, t.z));
+    if (t.slanis !== 'ter') w.y = floors[t.slanis].userData.targetY + t.y;
+    desiredTarget.copy(w); flying = true;
+  }
+}
+function closeTask() {
+  if (!curTask && taskEl.classList.contains('hidden')) return;
+  curTask = null; moving = null;
+  taskEl.classList.add('hidden');
+  syncPins();
+}
+document.getElementById('task-close').onclick = closeTask;
+
+function buildView(t) {
+  const isDone = done.has(t.id);
+  const tag = el('div', 'tag');
+  const dot = el('span', 'dot'); dot.style.background = veids(t).krasa;
+  tag.append(dot, el('span', '', veids(t).ikona + ' ' + veids(t).nos + ' · Nr. ' + taskNum(t)));
+  const dl = el('dl');
+  dl.append(el('dt', '', 'Vieta'), el('dd', '', layerName(t)));
+  taskBody.append(tag, el('h2', '', t.nos), dl);
+  if (t.apraksts) taskBody.appendChild(el('p', 'desc', t.apraksts));
+  const b = el('button', 'ebtn ' + (isDone ? '' : 'primary'), isDone ? '✓ Izpildīts — atcelt atzīmi' : 'Atzīmēt kā izpildītu');
+  if (!isDone) b.style.background = veids(t).krasa;
+  b.onclick = () => {
+    if (done.has(t.id)) done.delete(t.id); else done.add(t.id);
+    saveDone();
+    renderList();
+    openTask(t);
+    if (done.has(t.id)) {
+      const left = allTasks().filter(x => !done.has(x.id)).length;
+      toast(left ? `Lieliski! Atlikuši ${left} uzdevumi` : 'Visi uzdevumi izpildīti! 🎉');
+    }
+  };
+  taskBody.appendChild(b);
+}
+
+function buildEditForm(t) {
+  const tag = el('div', 'tag');
+  const dot = el('span', 'dot'); dot.style.background = veids(t).krasa;
+  tag.append(dot, el('span', '', 'Rediģē marķieri · ' + layerName(t)));
+  taskBody.appendChild(tag);
+  const l0 = el('label', '', 'Veids');
+  const chk = el('div', 'chk');
+  VEIDU_SECIBA.forEach(v => {
+    const lab = el('label', 'c');
+    const rb = el('input'); rb.type = 'radio'; rb.name = 'veids'; rb.checked = t.veids === v;
+    rb.onchange = () => { t.veids = v; saveDraft(); syncPins(); renderEditor(); openTask(t); };
+    const i = el('i', 'vdot'); i.style.background = VEIDI[v].krasa;
+    lab.append(rb, i, document.createTextNode(VEIDI[v].ikona + ' ' + VEIDI[v].isais));
+    chk.appendChild(lab);
+  });
+  const l1 = el('label', '', 'Nosaukums');
+  const inp = el('input'); inp.type = 'text'; inp.value = t.nos;
+  inp.oninput = () => { t.nos = inp.value; saveDraft(); renderEditor(); };
+  const l2 = el('label', '', 'Apraksts (ko skolēniem jādara)');
+  const ta = el('textarea'); ta.value = t.apraksts;
+  ta.oninput = () => { t.apraksts = ta.value; saveDraft(); };
+  taskBody.append(l0, chk, l1, inp, l2, ta);
+  const row = el('div', 'btnrow');
+  const mv = el('button', 'ebtn', '↔ Pārvietot');
+  mv.onclick = () => { moving = t; placing = null; updateCursor(); toast('Noklikšķini kartē jaunajā vietā'); };
+  const del = el('button', 'ebtn danger', 'Dzēst');
+  del.onclick = () => {
+    if (!confirm('Dzēst marķieri “' + t.nos + '”?')) return;
+    TASKS.marki = TASKS.marki.filter(x => x !== t);
+    saveDraft(); closeTask(); syncPins(); renderEditor();
+  };
+  row.append(mv, del);
+  const ok = el('button', 'ebtn primary', 'Gatavs');
+  ok.onclick = closeTask;
+  taskBody.append(row, ok);
+  setTimeout(() => { if (t.nos === 'Jauns uzdevums') { inp.focus(); inp.select(); } }, 50);
+}
+
+// --- redaktors ---
+const editorEl = document.getElementById('editor');
+const editBtn = document.getElementById('edit');
+const addBtns = { laiks: document.getElementById('e-add-l'), punkti: document.getElementById('e-add-p') };
+if (!EDIT_ALLOWED) editBtn.remove();
+function closeEditorPanelIfMobile() { if (innerWidth <= 700 && editMode) editorEl.classList.add('hidden'); }
+editBtn.onclick = () => {
+  editMode = !editMode;
+  placing = null; moving = null;
+  editBtn.classList.toggle('on', editMode);
+  editorEl.classList.toggle('hidden', !editMode);
+  listEl.classList.add('hidden');
+  const t = curTask; closeTask(); if (t) openTask(t);
+  renderEditor(); renderProgress(); renderMleg(); updateCursor(); updateSide();
+};
+VEIDU_SECIBA.forEach(v => {
+  addBtns[v].onclick = () => {
+    placing = placing === v ? null : v; moving = null;
+    updateCursor(); renderEditor();
+    if (placing) toast('Noklikšķini kartē, kur likt: ' + VEIDI[v].nos.toLowerCase());
+  };
+});
+function renderEditor() {
+  if (!editMode) return;
+  VEIDU_SECIBA.forEach(v => {
+    addBtns[v].textContent = placing === v ? 'Noklikšķini kartē… (atcelt)' : '+ ' + VEIDI[v].ikona + ' ' + VEIDI[v].nos;
+    addBtns[v].style.background = placing === v ? '#1f2933' : VEIDI[v].krasa;
+  });
+  fillGroups(document.getElementById('e-list'), true, 'Vēl nav marķieru. Izvēlies stāvu un spied pogu augšā.');
+}
+function moveTask(t, d) {
+  const same = tasksOf(t.veids);
+  const i = same.indexOf(t), j = i + d;
+  if (j < 0 || j >= same.length) return;
+  const a = TASKS.marki.indexOf(same[i]), b = TASKS.marki.indexOf(same[j]);
+  [TASKS.marki[a], TASKS.marki[b]] = [TASKS.marki[b], TASKS.marki[a]];
+  saveDraft(); syncPins(); renderEditor();
+}
+function updateCursor() {
+  renderer.domElement.style.cursor = (placing || moving) ? 'crosshair' : 'grab';
+}
+function placeAt(e) {
+  setPtr(e);
+  const r1 = v => Math.round(v * 10) / 10;
+  let pos = null;
+  const hit = ray.intersectObjects(pickables(), false)[0];
+  if (hit && hit.object.userData.room.kind === 'floor') {           // stāva telpa vai āra kāpnes
+    const room = hit.object.userData.room, par = floors[room.floorIdx];
+    par.updateMatrixWorld(true);
+    const p = par.worldToLocal(hit.point.clone());
+    pos = { slanis: room.floorIdx, x: r1(p.x), y: r1(Math.min(Math.max(p.y, 0.2), WALL_H)), z: r1(p.z) };
+  } else {
+    // teritorija: zāle, ceļi, takas, laukumi, zeme — jebkur
+    const cands = [];
+    if (shown(territory)) territory.traverse(o => { if (o.isMesh && shown(o)) cands.push(o); });
+    if (ground.visible) cands.push(ground);
+    const h2 = hit || ray.intersectObjects(cands, false)[0];
+    if (h2 && (mode === 'ter' || mode === 'all' || mode === 0)) {
+      terPins.updateMatrixWorld(true);
+      const p = terPins.worldToLocal(h2.point.clone());
+      pos = { slanis: 'ter', x: r1(p.x), y: r1(Math.max(p.y, 0)), z: r1(p.z) };
+    } else if (typeof mode === 'number') {                          // augšējā stāvā ārpus telpām
+      const f = floors[mode]; f.updateMatrixWorld(true);
+      const fy = f.getWorldPosition(new THREE.Vector3()).y;
+      const pt = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -fy), new THREE.Vector3());
+      if (pt) { const p = f.worldToLocal(pt); pos = { slanis: mode, x: r1(p.x), y: 0.2, z: r1(p.z) }; }
+    }
+  }
+  if (!pos) { toast('Noklikšķini uz kartes'); return; }
+  let t;
+  if (moving) { t = moving; Object.assign(t, pos); moving = null; toast('Marķieris pārvietots'); }
+  else {
+    t = { id: 'm' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), veids: placing || 'punkti', ...pos, nos: 'Jauns uzdevums', apraksts: '' };
+    TASKS.marki.push(t);
+    placing = null;
+  }
+  saveDraft(); syncPins(); renderEditor(); updateCursor();
+  openTask(t);
+}
+
+// --- lejupielāde / ielāde / atmešana ---
+document.getElementById('e-export').onclick = () => {
+  const src = window.__SKOLA_SRC;
+  if (!src) { toast('Neizdevās sagatavot failu'); return; }
+  const json = JSON.stringify({ marki: TASKS.marki }, null, 2).replace(/<\//g, '<\\/');
+  const out = src.replace(/(<script id="uzdevumi-dati" type="application\/json">)[\s\S]*?(<\/script>)/, (_, a, b) => a + '\n' + json + '\n' + b);
+  const blob = new Blob([out], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'skolas-3d-plans-uzdevumi.html';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  toast('Fails lejupielādēts');
+};
+const fileIn = document.getElementById('e-file');
+document.getElementById('e-import').onclick = () => fileIn.click();
+fileIn.onchange = async () => {
+  const f = fileIn.files[0]; fileIn.value = '';
+  if (!f) return;
+  const txt = await f.text();
+  const m = txt.match(/<script id="uzdevumi-dati" type="application\/json">([\s\S]*?)<\/script>/);
+  let data;
+  try { data = JSON.parse(m ? m[1] : txt); } catch (e) { toast('Šajā failā neatradu uzdevumus'); return; }
+  TASKS = normalizeTasks(data);
+  saveDraft(); loadDone(); closeTask(); syncPins(); renderList(); renderEditor();
+  toast('Ielādēti ' + TASKS.marki.length + ' marķieri');
+};
+document.getElementById('e-reset').onclick = () => {
+  if (!confirm('Atmest visas nesaglabātās izmaiņas un atgriezties pie uzdevumiem, kas ir šajā failā?')) return;
+  store.del(DRAFT_KEY);
+  TASKS = normalizeTasks(JSON.parse(JSON.stringify(FILE_TASKS)));
+  closeTask(); syncPins(); renderList(); renderEditor();
+};
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && (placing || moving)) { placing = null; moving = null; updateCursor(); renderEditor(); }
+});
+
+// --- izkārtojums: paneļi zem augšējās joslas ---
+function layoutTop() {
+  const tb = document.querySelector('.topbar').getBoundingClientRect();
+  document.documentElement.style.setProperty('--top', Math.round(tb.bottom + 10) + 'px');
+}
+addEventListener('resize', () => { layoutTop(); syncPins(); });
+
+function initTasks() {
+  loadDone(); syncPins(); renderList(); layoutTop();
+}
+
+// ---------- loop ----------
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+setFloor(0);
+floors[0].position.y = 0;
+resetView();
+initTasks();
+
+let redraw = 90;
+const invalidate = (n = 30) => { redraw = Math.max(redraw, n); };
+controls.addEventListener('change', () => invalidate(2));
+['pointerdown', 'pointermove', 'pointerup', 'wheel', 'touchstart', 'touchmove', 'touchend', 'keydown', 'click', 'input'].forEach(ev =>
+  addEventListener(ev, () => invalidate(ev === 'pointermove' ? 3 : 40), { passive: true, capture: true }));
+addEventListener('resize', () => invalidate(40));
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const t = clock.getElapsedTime();
+  let anim = false;
+  floors.forEach(f => {
+    const d = f.userData.targetY - f.position.y;
+    if (Math.abs(d) > 0.002) { f.position.y += d * 0.14; anim = true; } else f.position.y = f.userData.targetY;
+  });
+  if (flying) {
+    const delta = desiredTarget.clone().sub(controls.target).multiplyScalar(0.12);
+    if (delta.lengthSq() > 1e-6) { controls.target.add(delta); camera.position.add(delta); }
+    else if (desiredDist === null) flying = false;
+  }
+  if (desiredDist !== null) {
+    const off = camera.position.clone().sub(controls.target);
+    const d = off.length();
+    const nd = d + (desiredDist - d) * 0.1;
+    camera.position.copy(controls.target).addScaledVector(off.normalize(), nd);
+    if (Math.abs(desiredDist - nd) < 0.05) desiredDist = null;
+  }
+  if (marker.visible) {
+    marker.position.y = marker.userData.baseY + Math.abs(Math.sin(t * 3)) * 0.5 * marker.scale.y;
+    marker.rotation.y = t * 1.5;
+  }
+  const camMoved = controls.update();
+  if (anim || camMoved || flying || desiredDist !== null || marker.visible || redraw > 0) {
+    renderer.render(scene, camera);
+    if (redraw > 0) redraw--;
+  }
+});
+</script>
+<!-- saglabā lapas oriģinālo kodu, lai redaktors varētu lejupielādēt kopiju ar uzdevumiem -->
+<script>window.__SKOLA_SRC = '<!doctype html>\n' + document.documentElement.outerHTML;</script>
+</body>
+</html>
